@@ -1,0 +1,56 @@
+/* Hallmark · macrostructure: studied-DNA · tone: warm mental-wellness · anchor hue: orange */
+:root {
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-outfit), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  --color-paper: oklch(98.4% 0.016 66);
+  --color-paper-soft: oklch(96.8% 0.029 68);
+  --color-surface: oklch(100% 0 0);
+  --color-surface-muted: oklch(97.7% 0.013 67);
+  --color-ink: oklch(17.2% 0.015 256);
+  --color-text: oklch(29% 0.041 256);
+  --color-muted: oklch(47% 0.035 256);
+  --color-rule: oklch(91.5% 0.018 70);
+  --color-brand: oklch(70.5% 0.191 48.5);
+  --color-brand-strong: oklch(62.8% 0.194 42.5);
+  --color-brand-soft: oklch(96.5% 0.045 67);
+  --color-danger: oklch(61% 0.22 28);
+  --color-success: oklch(66% 0.16 158);
+  --color-slate-900: oklch(20.8% 0.042 265);
+  --color-slate-850: oklch(23.8% 0.04 265);
+  --color-slate-800: oklch(27.8% 0.04 265);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  --text-3xl: clamp(2rem, 1.5rem + 1.7vw, 3rem);
+  --text-display: clamp(2.55rem, 1.9rem + 2.45vw, 4.15rem);
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --shadow-soft: 0 24px 70px oklch(70.5% 0.191 48.5 / 0.13);
+  --shadow-card: 0 18px 45px oklch(25% 0.03 260 / 0.08);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+  --dur-fast: 140ms;
+  --dur-med: 220ms;
+}

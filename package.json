@@ -1,0 +1,36 @@
+{
+  "name": "qonsulin-clone",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.18.3",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "sync:live": "node scripts/sync-live-supabase.mjs",
+    "sync:live:push": "node scripts/sync-live-supabase.mjs --push"
+  },
+  "dependencies": {
+    "@mdxeditor/editor": "^4.0.4",
+    "@supabase/supabase-js": "^2.45.4",
+    "@tailwindcss/typography": "^0.5.20",
+    "@uiw/react-md-editor": "^4.1.1",
+    "lucide-react": "^0.468.0",
+    "next": "^15.0.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "eslint": "^9.16.0",
+    "eslint-config-next": "^15.0.3",
+    "typescript": "^5.7.2"
+  }
+}

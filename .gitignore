@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.env*.local
+.DS_Store
+tmp
+tsconfig.tsbuildinfo
+.vercel
+.netlify
+data/
+public/uploads/
