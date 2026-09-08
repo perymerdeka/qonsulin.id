@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminCookieName, verifyAdminSessionValue } from "@/lib/server/admin-auth";
 import { getSupabaseAdminClient } from "@/lib/server/supabase-admin";
 import { getSupabasePublicClient } from "@/lib/supabase";
-import { deleteLocalCmsRow, getLocalCmsStore, upsertLocalCmsRow } from "@/lib/server/local-cms-store";
 
 type CmsSection = "posts" | "activities" | "testimonials" | "lead-magnets" | "galleries" | "streaming" | "companions";
 
@@ -73,7 +72,7 @@ export async function GET(request: NextRequest) {
   const publicClient = getSupabasePublicClient();
   const supabase = (adminClient || publicClient) as any;
   if (!supabase) {
-    return NextResponse.json({ ok: true, store: getLocalCmsStore(), isLocal: true });
+    return NextResponse.json({ ok: false, message: "Supabase client tidak tersedia. Periksa variabel environment Supabase." }, { status: 500 });
   }
 
   const [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes] = await Promise.all([
@@ -86,18 +85,21 @@ export async function GET(request: NextRequest) {
     supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
   ]);
 
-  const localStore = getLocalCmsStore();
+  if (postsRes.error) {
+    console.error("[CMS Server Error] Gagal membaca blog_posts dari Supabase:", postsRes.error);
+    return NextResponse.json({ ok: false, message: `Gagal membaca artikel dari database: ${postsRes.error.message}` }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,
     store: {
-      posts: !postsRes.error && postsRes.data ? postsRes.data : localStore.posts,
-      activities: !activitiesRes.error && activitiesRes.data ? activitiesRes.data : localStore.activities,
-      testimonials: !testimonialsRes.error && testimonialsRes.data ? testimonialsRes.data : localStore.testimonials,
-      "lead-magnets": !leadsRes.error && leadsRes.data ? leadsRes.data : localStore["lead-magnets"],
-      galleries: !galleriesRes.error && galleriesRes.data ? galleriesRes.data : localStore.galleries,
-      streaming: !streamingRes.error && streamingRes.data ? streamingRes.data : localStore.streaming,
-      companions: !companionsRes.error && companionsRes.data ? companionsRes.data : localStore.companions
+      posts: postsRes.data || [],
+      activities: activitiesRes.data || [],
+      testimonials: testimonialsRes.data || [],
+      "lead-magnets": leadsRes.data || [],
+      galleries: galleriesRes.data || [],
+      streaming: streamingRes.data || [],
+      companions: companionsRes.data || []
     }
   });
 }
@@ -180,20 +182,20 @@ export async function POST(request: NextRequest) {
       }
 
       if (!result.error && result.data) {
-        upsertLocalCmsRow(section, result.data as any, targetId || rawId);
         return NextResponse.json({ ok: true, row: result.data });
       } else if (result.error) {
         lastDbError = result.error.message || String(result.error);
         console.error("[CMS Server Error] Supabase write error:", lastDbError);
+        return NextResponse.json({ ok: false, message: `Gagal menyimpan ke database Supabase: ${lastDbError}` }, { status: 500 });
       }
     } catch (err: any) {
       lastDbError = err?.message || String(err);
       console.error("[CMS Server Error] Supabase exception during write:", err);
+      return NextResponse.json({ ok: false, message: `Kesalahan server database: ${lastDbError}` }, { status: 500 });
     }
   }
 
-  const localRow = upsertLocalCmsRow(section, normalized, rawId);
-  return NextResponse.json({ ok: true, row: localRow, isLocal: true, dbError: lastDbError });
+  return NextResponse.json({ ok: false, message: "Koneksi database Supabase tidak tersedia." }, { status: 500 });
 }
 
 export async function DELETE(request: NextRequest) {
@@ -207,22 +209,24 @@ export async function DELETE(request: NextRequest) {
   const publicClient = getSupabasePublicClient();
   const supabase = (adminClient || publicClient) as any;
 
-  if (supabase) {
-    try {
-      const isRealUuid = isValidUuid(rawId);
-      if (isRealUuid) {
-        const { error } = await supabase.from(tableBySection[section]).delete().eq("id", rawId);
-        if (!error) {
-          deleteLocalCmsRow(section, rawId);
-          return NextResponse.json({ ok: true });
-        }
-        console.error("[CMS Server Error] Supabase delete error:", error.message || error);
-      }
-    } catch (err: any) {
-      console.error("[CMS Server Error] Supabase delete exception:", err);
-    }
+  if (!supabase) {
+    return NextResponse.json({ ok: false, message: "Koneksi database Supabase tidak tersedia." }, { status: 500 });
   }
 
-  deleteLocalCmsRow(section, rawId);
-  return NextResponse.json({ ok: true, isLocal: true });
+  try {
+    const isRealUuid = isValidUuid(rawId);
+    if (isRealUuid) {
+      const { error } = await supabase.from(tableBySection[section]).delete().eq("id", rawId);
+      if (!error) {
+        return NextResponse.json({ ok: true });
+      }
+      console.error("[CMS Server Error] Supabase delete error:", error.message || error);
+      return NextResponse.json({ ok: false, message: `Gagal menghapus dari database: ${error.message}` }, { status: 500 });
+    } else {
+      return NextResponse.json({ ok: false, message: "ID rekaman tidak valid untuk dihapus dari database." }, { status: 400 });
+    }
+  } catch (err: any) {
+    console.error("[CMS Server Error] Supabase delete exception:", err);
+    return NextResponse.json({ ok: false, message: `Kesalahan server saat menghapus: ${err?.message || err}` }, { status: 500 });
+  }
 }

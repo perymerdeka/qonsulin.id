@@ -110,11 +110,7 @@ export async function getPostBySlugServer(slug: string): Promise<BlogPost | null
     } catch {}
   }
 
-  const localStore = getLocalCmsStore();
-  const found = localStore.posts.find((post) => post.slug === slug);
-  if (found) return found;
-
-  return fallbackPosts.find((post) => post.slug === slug) || null;
+  return null;
 }
 
 export async function getGalleryEventBySlugServer(slug: string): Promise<GalleryEvent | null> {

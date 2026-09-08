@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BookOpenText, CalendarCheck2, CalendarPlus2, Database, Eye, FilePlus2, FileText, Globe2, ImagePlus, Images, LayoutDashboard, LogOut, MessageCircle, MessageSquarePlus, MessageSquareQuote, PenLine, Radio, RefreshCw, Save, Settings as SettingsIcon, ShieldCheck, Trash2, Upload, UsersRound } from "lucide-react";
 import { Brand } from "@/components/PublicChrome";
-import { fallbackActivities, fallbackCompanions, fallbackGalleryEvents, fallbackLeadMagnets, fallbackPosts, fallbackStreamingVideos, fallbackTestimonials, slugify, type ActivityItem, type BlogPost, type CmsStatus, type CompanionProfile, type GalleryEvent, type LeadMagnet, type StreamingVideo, type Testimonial } from "@/lib/cms";
+import { slugify, type ActivityItem, type BlogPost, type CmsStatus, type CompanionProfile, type GalleryEvent, type LeadMagnet, type StreamingVideo, type Testimonial } from "@/lib/cms";
 import { hasSupabaseEnv } from "@/lib/supabase";
 import dynamic from "next/dynamic";
 import "@uiw/react-md-editor/markdown-editor.css";
@@ -58,14 +58,14 @@ const tableBySection = {
   companions: "companions"
 } as const;
 
-const fallbackStore: Store = {
-  posts: fallbackPosts,
-  activities: fallbackActivities,
-  testimonials: fallbackTestimonials,
-  "lead-magnets": fallbackLeadMagnets,
-  galleries: fallbackGalleryEvents,
-  streaming: fallbackStreamingVideos,
-  companions: fallbackCompanions
+const emptyStore: Store = {
+  posts: [],
+  activities: [],
+  testimonials: [],
+  "lead-magnets": [],
+  galleries: [],
+  streaming: [],
+  companions: []
 };
 
 export default function AdminApp({ initialSlug, initialAuthenticated }: { initialSlug: string[]; initialAuthenticated: boolean }) {
@@ -76,7 +76,7 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
   const [loggedIn, setLoggedIn] = useState(() => initialAuthenticated || previewEnabled());
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [store, setStore] = useState<Store>(fallbackStore);
+  const [store, setStore] = useState<Store>(emptyStore);
 
   useEffect(() => {
     if (loggedIn) void loadAll();
@@ -84,52 +84,30 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
 
   async function loadAll() {
     setLoading(true);
-    console.log("[CMS Admin] Memuat seluruh data dari server...");
+    setMessage("");
+    console.log("[CMS Admin] Memuat data langsung dari database Supabase...");
     try {
-      const api = previewEnabled() ? null : await fetch("/api/admin/cms", { cache: "no-store" }).catch((err) => {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("qonsulin_local_cms_store");
+      }
+
+      const api = await fetch("/api/admin/cms", { cache: "no-store" }).catch((err) => {
         console.error("[CMS Admin Load Network Error]:", err);
         return null;
       });
-      if (api) {
-        const body = await api.json().catch(() => ({})) as CmsApiResponse;
-        console.log(`[CMS Admin Load Response (${api.status})]:`, body);
-        if (api.ok && body.store) {
-          setStore(body.store);
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("qonsulin_local_cms_store");
-          }
-          return;
-        }
+
+      if (!api) {
+        setMessage("Gagal terhubung ke API server CMS. Periksa koneksi jaringan.");
+        return;
       }
 
-      if (typeof window !== "undefined") {
-        const localSaved = localStorage.getItem("qonsulin_local_cms_store");
-        if (localSaved) {
-          try {
-            const parsed = JSON.parse(localSaved);
-            const merge = <T extends { id: string }>(saved?: T[], defaults?: T[]) => {
-              if (!Array.isArray(saved) || saved.length === 0) return defaults || [];
-              const savedIds = new Set(saved.map((item) => item.id));
-              const missingDefaults = (defaults || []).filter((item) => !savedIds.has(item.id));
-              return [...saved, ...missingDefaults];
-            };
-            setStore({
-              posts: merge(parsed.posts, fallbackStore.posts),
-              activities: merge(parsed.activities, fallbackStore.activities),
-              testimonials: merge(parsed.testimonials, fallbackStore.testimonials),
-              "lead-magnets": merge(parsed["lead-magnets"], fallbackStore["lead-magnets"]),
-              galleries: merge(parsed.galleries, fallbackStore.galleries),
-              streaming: merge(parsed.streaming, fallbackStore.streaming),
-              companions: merge(parsed.companions, fallbackStore.companions)
-            });
-          } catch {
-            setStore(fallbackStore);
-          }
-        } else {
-          setStore(fallbackStore);
-        }
+      const body = await api.json().catch(() => ({})) as CmsApiResponse;
+      if (api.ok && body.store) {
+        setStore(body.store);
+        return;
       }
-      setMessage("Mode Penyimpanan Lokal Aktif: Perubahan tersimpan aman di perangkat Anda.");
+
+      setMessage(`Gagal memuat dari database: ${body.message || "Pastikan sesi login administrator masih aktif."}`);
     } finally {
       setLoading(false);
     }
@@ -156,8 +134,7 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
     const normalized = normalizePayload(sectionId, payload, now);
 
     try {
-      let saved: AnyRow | null = null;
-      console.log(`[CMS Admin] Mengirim data ${sectionId}:`, { id, payload });
+      console.log(`[CMS Admin] Menyimpan ke database ${sectionId}:`, { id, payload });
 
       const api = await fetch("/api/admin/cms", {
         method: "POST",
@@ -168,74 +145,57 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
         return null;
       });
 
-      if (api) {
-        const body = await api.json().catch(() => ({})) as CmsApiResponse & { message?: string; error?: unknown };
-        console.log(`[CMS Admin API Response (${api.status})]:`, body);
-        if (api.ok && body.row) {
-          saved = body.row;
-        } else if (!api.ok) {
-          console.error(`[CMS Admin Error ${api.status}]:`, body.message || body.error || "Gagal menyimpan ke server");
-        }
+      if (!api) {
+        throw new Error("Gagal terhubung ke API server CMS.");
       }
 
-      const isLocalMode = !saved;
-      if (!saved) {
-        const existingRow = id ? store[sectionId].find((r) => r.id === id) : null;
-        saved = {
-          id: id || `local-${Date.now()}`,
-          ...existingRow,
-          ...normalized,
-          created_at: id ? ((existingRow as any)?.created_at || now) : now,
-          updated_at: now
-        } as AnyRow;
+      const body = await api.json().catch(() => ({})) as CmsApiResponse & { message?: string };
+      if (!api.ok || !body.row) {
+        throw new Error(body.message || "Gagal menyimpan ke database Supabase.");
       }
 
+      const saved = body.row;
       setStore((current) => {
         const updatedList = id
           ? current[sectionId].map((row) => row.id === id ? { ...row, ...saved } : row)
           : [saved as never, ...current[sectionId]];
-        const newStore = { ...current, [sectionId]: updatedList };
-        if (isLocalMode && typeof window !== "undefined") {
-          localStorage.setItem("qonsulin_local_cms_store", JSON.stringify(newStore));
-        }
-        return newStore;
+        return { ...current, [sectionId]: updatedList };
       });
 
-      setMessage("Konten berhasil disimpan.");
+      setMessage("Konten berhasil disimpan langsung ke database Supabase.");
       navigate(sectionId);
     } catch (error) {
       console.error("[CMS Admin Exception]:", error);
-      setMessage(error instanceof Error ? error.message : "Gagal menyimpan data CMS.");
+      setMessage(error instanceof Error ? error.message : "Gagal menyimpan data ke database.");
     } finally {
       setLoading(false);
     }
   }
 
   async function remove(sectionId: Exclude<Section, "dashboard" | "settings">, id: string) {
-    if (!window.confirm("Hapus konten ini dari CMS?")) return;
-    console.log(`[CMS Admin] Menghapus data ${sectionId} id=${id}`);
-    const api = await fetch(`/api/admin/cms?section=${encodeURIComponent(sectionId)}&id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch((err) => {
-      console.error("[CMS Admin Delete Network Error]:", err);
-      return null;
-    });
-    if (api?.ok) {
-      const res = await api.json().catch(() => ({}));
-      console.log("[CMS Admin Delete Response]:", res);
-      setStore((current) => {
-        const newStore = { ...current, [sectionId]: current[sectionId].filter((row) => row.id !== id) };
-        if (typeof window !== "undefined") localStorage.setItem("qonsulin_local_cms_store", JSON.stringify(newStore));
-        return newStore;
+    if (!window.confirm("Hapus konten ini secara permanen dari database?")) return;
+    setLoading(true);
+    try {
+      const api = await fetch(`/api/admin/cms?section=${encodeURIComponent(sectionId)}&id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch((err) => {
+        console.error("[CMS Admin Delete Network Error]:", err);
+        return null;
       });
-      setMessage("Konten berhasil dihapus.");
-      return;
-    }
 
-    setStore((current) => {
-      const newStore = { ...current, [sectionId]: current[sectionId].filter((row) => row.id !== id) };
-      if (typeof window !== "undefined") localStorage.setItem("qonsulin_local_cms_store", JSON.stringify(newStore));
-      return newStore;
-    });
-    setMessage("Konten berhasil dihapus.");
+      const res = api ? await api.json().catch(() => ({})) : null;
+      if (!api?.ok || !res?.ok) {
+        throw new Error(res?.message || "Gagal menghapus data dari database Supabase.");
+      }
+
+      setStore((current) => ({
+        ...current,
+        [sectionId]: current[sectionId].filter((row) => row.id !== id)
+      }));
+      setMessage("Konten berhasil dihapus dari database Supabase.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Gagal menghapus konten.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -308,7 +268,7 @@ function LoginScreen({ onLogin, message, setMessage }: { onLogin: () => void; me
             {message && <p style={{ color: "oklch(77% 0.16 45)", lineHeight: 1.55 }}>{message}</p>}
             <button className="btn btn-primary" style={{ width: "100%" }} type="submit">Masuk Portal Admin</button>
           </form>
-          <div className="live"><ShieldCheck size={16} />{supabaseReady ? "Terhubung ke Server Online" : "Mode Penyimpanan Lokal"}</div>
+          <div className="live"><ShieldCheck size={16} />Terhubung Langsung ke Database Supabase</div>
         </div>
         <p style={{ textAlign: "center", marginTop: "1.5rem" }}><a href={publicSiteUrl}>← Kembali ke Website Qonsulin.id</a></p>
       </div>
@@ -416,7 +376,7 @@ function Settings({ loading, onRefresh }: { loading: boolean; onRefresh: () => v
       <div className="admin-grid">
         <article className="admin-card">
           <h3>Sambungan Penyimpanan Data</h3>
-          <p>Status Sambungan: <strong>{hasSupabaseEnv() ? "Terhubung Online (Supabase Database)" : "Mode Penyimpanan Lokal"}</strong></p>
+          <p>Status Sambungan: <strong>Terhubung Langsung ke Supabase PostgreSQL (Fallback Dinonaktifkan)</strong></p>
           <p>Seluruh artikel, ulasan, dan galeri yang Anda kelola akan otomatis terpublikasi ke website utama.</p>
         </article>
         <article className="admin-card">

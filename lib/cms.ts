@@ -20,23 +20,23 @@ import {
 
 export * from "@/lib/cms-fallback";
 
-async function listFromSupabase<T>(table: string, fallback: T[], includeDrafts = false, order = "created_at") {
+async function listFromSupabase<T>(table: string, fallback: T[] = [], includeDrafts = false, order = "created_at") {
   const supabase = getSupabasePublicClient();
-  if (!supabase) return fallback;
+  if (!supabase) return [];
 
   try {
     let query = supabase.from(table).select("*").order(order, { ascending: false });
     if (!includeDrafts) query = query.eq("status", "published");
     const { data, error } = await query;
-    if (error || !data) return fallback;
+    if (error || !data) return [];
     return data as T[];
   } catch {
-    return fallback;
+    return [];
   }
 }
 
 export async function getPublishedPosts() {
-  return listFromSupabase<BlogPost>("blog_posts", fallbackPosts.filter((post) => post.status === "published"));
+  return listFromSupabase<BlogPost>("blog_posts", []);
 }
 
 export async function getPostBySlug(slug: string) {
@@ -48,7 +48,7 @@ export async function getPostBySlug(slug: string) {
     } catch {}
   }
 
-  return fallbackPosts.find((post) => post.slug === slug) || null;
+  return null;
 }
 
 export async function getPublishedActivities() {
