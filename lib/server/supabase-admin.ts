@@ -21,16 +21,22 @@ export function hasSupabaseAdminEnv() {
   return Boolean(getSupabaseUrl() && getServiceRoleKey());
 }
 
+let cachedAdminClient: ReturnType<typeof createClient> | null = null;
+
 export function getSupabaseAdminClient() {
+  if (cachedAdminClient) return cachedAdminClient;
+
   const url = getSupabaseUrl();
   const serviceRoleKey = getServiceRoleKey();
 
   if (!url || !serviceRoleKey) return null;
 
-  return createClient(url, serviceRoleKey, {
+  cachedAdminClient = createClient(url, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false
     }
   });
+
+  return cachedAdminClient;
 }

@@ -20,30 +20,42 @@ export function hasSupabaseEnv() {
   return Boolean(getSupabaseUrl() && getSupabasePublishableKey());
 }
 
+let cachedSupabaseClient: ReturnType<typeof createClient> | null = null;
+
 export function getSupabaseClient() {
+  if (cachedSupabaseClient) return cachedSupabaseClient;
+
   const url = getSupabaseUrl();
   const anonKey = getSupabasePublishableKey();
 
   if (!url || !anonKey) return null;
 
-  return createClient(url, anonKey, {
+  cachedSupabaseClient = createClient(url, anonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true
     }
   });
+
+  return cachedSupabaseClient;
 }
 
+let cachedPublicClient: ReturnType<typeof createClient> | null = null;
+
 export function getSupabasePublicClient() {
+  if (cachedPublicClient) return cachedPublicClient;
+
   const url = getSupabaseUrl();
   const anonKey = getSupabasePublishableKey();
 
   if (!url || !anonKey) return null;
 
-  return createClient(url, anonKey, {
+  cachedPublicClient = createClient(url, anonKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false
     }
   });
+
+  return cachedPublicClient;
 }

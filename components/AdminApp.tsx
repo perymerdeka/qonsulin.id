@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BookOpenText, CalendarCheck2, CalendarPlus2, Database, Eye, FilePlus2, FileText, Globe2, ImagePlus, Images, LayoutDashboard, LogOut, MessageCircle, MessageSquarePlus, MessageSquareQuote, PenLine, Radio, RefreshCw, Save, Settings as SettingsIcon, ShieldCheck, Trash2, Upload, UsersRound } from "lucide-react";
 import { Brand } from "@/components/PublicChrome";
 import { fallbackActivities, fallbackCompanions, fallbackGalleryEvents, fallbackLeadMagnets, fallbackPosts, fallbackStreamingVideos, fallbackTestimonials, slugify, type ActivityItem, type BlogPost, type CmsStatus, type CompanionProfile, type GalleryEvent, type LeadMagnet, type StreamingVideo, type Testimonial } from "@/lib/cms";
-import { getSupabaseClient, hasSupabaseEnv } from "@/lib/supabase";
+import { hasSupabaseEnv } from "@/lib/supabase";
 import dynamic from "next/dynamic";
 import "@uiw/react-md-editor/markdown-editor.css";
 import "@uiw/react-markdown-preview/markdown.css";
@@ -94,29 +94,6 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
         }
       }
 
-      const supabase = getSupabaseClient();
-      if (supabase) {
-        const [posts, activities, testimonials, leads, galleries, streaming, companions] = await Promise.all([
-          supabase.from("blog_posts").select("*").order("created_at", { ascending: false }),
-          supabase.from("activities").select("*").order("created_at", { ascending: false }),
-          supabase.from("testimonials").select("*").order("created_at", { ascending: false }),
-          supabase.from("lead_magnets").select("*").order("created_at", { ascending: false }),
-          supabase.from("gallery_events").select("*, gallery_media(count)").order("created_at", { ascending: false }),
-          supabase.from("streaming_videos").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
-          supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
-        ]);
-        setStore({
-          posts: rowsOrFallback(posts, fallbackStore.posts),
-          activities: rowsOrFallback(activities, fallbackStore.activities),
-          testimonials: rowsOrFallback(testimonials, fallbackStore.testimonials),
-          "lead-magnets": rowsOrFallback(leads, fallbackStore["lead-magnets"]),
-          galleries: rowsOrFallback(galleries, fallbackStore.galleries).map((event: any) => ({ ...event, media_count: Array.isArray(event.gallery_media) ? event.gallery_media[0]?.count || 0 : event.media_count || 0 })),
-          streaming: rowsOrFallback(streaming, fallbackStore.streaming),
-          companions: rowsOrFallback(companions, fallbackStore.companions)
-        });
-        return;
-      }
-
       if (typeof window !== "undefined") {
         const localSaved = localStorage.getItem("qonsulin_local_cms_store");
         if (localSaved) {
@@ -168,9 +145,7 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
     setLoading(true);
     setMessage("");
     const now = new Date().toISOString();
-    const table = tableBySection[sectionId];
     const normalized = normalizePayload(sectionId, payload, now);
-    const supabase = getSupabaseClient();
 
     try {
       let saved: AnyRow | null = null;
@@ -183,16 +158,6 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
       if (api?.ok) {
         const body = await api.json() as CmsApiResponse;
         saved = body.row || null;
-      }
-
-      if (supabase && !saved) {
-        const { data: session } = await supabase.auth.getSession();
-        if (session.session) {
-          const result = id
-            ? await supabase.from(table).update(normalized).eq("id", id).select().single()
-            : await supabase.from(table).insert([normalized]).select().single();
-          if (!result.error) saved = result.data as AnyRow;
-        }
       }
 
       const isLocalMode = !saved;
@@ -246,29 +211,12 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
       return;
     }
 
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      const { data: session } = await supabase.auth.getSession();
-      if (session.session) {
-        const { error } = await supabase.from(tableBySection[sectionId]).delete().eq("id", id);
-        if (!error) {
-          setStore((current) => {
-            const newStore = { ...current, [sectionId]: current[sectionId].filter((row) => row.id !== id) };
-            if (typeof window !== "undefined") localStorage.setItem("qonsulin_local_cms_store", JSON.stringify(newStore));
-            return newStore;
-          });
-          setMessage("Konten berhasil dihapus.");
-          return;
-        }
-      }
-    }
-
     setStore((current) => {
       const newStore = { ...current, [sectionId]: current[sectionId].filter((row) => row.id !== id) };
       if (typeof window !== "undefined") localStorage.setItem("qonsulin_local_cms_store", JSON.stringify(newStore));
       return newStore;
     });
-    setMessage("Konten berhasil dihapus (Mode Testing Lokal).");
+    setMessage("Konten berhasil dihapus.");
   }
 
   return (
@@ -284,7 +232,7 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
           </nav>
           <div style={{ marginTop: "auto", display: "grid", gap: ".5rem" }}>
             <a className="admin-badge" href={publicSiteUrl} target="_blank" rel="noreferrer"><Globe2 size={15} />Lihat Website Publik</a>
-            <button className="admin-badge" onClick={async () => { const supabase = getSupabaseClient(); await supabase?.auth.signOut(); await fetch("/api/admin/logout", { method: "POST" }); setLoggedIn(false); }}><LogOut size={15} />Keluar Akun (Log Out)</button>
+            <button className="admin-badge" onClick={async () => { await fetch("/api/admin/logout", { method: "POST" }); setLoggedIn(false); }}><LogOut size={15} />Keluar Akun (Log Out)</button>
           </div>
         </aside>
         <section className="admin-main">
@@ -322,30 +270,12 @@ function LoginScreen({ onLogin, message, setMessage }: { onLogin: () => void; me
     }).catch(() => null);
 
     if (serverResponse?.ok) {
-      const supabase = getSupabaseClient();
-      if (supabase) {
-        await supabase.auth.signInWithPassword({ email: normalizedEmail, password: normalizedPassword }).catch(() => null);
-      }
       onLogin();
       return;
     }
 
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password: normalizedPassword }).catch(() => ({} as any));
-      if (!error) {
-        const { data: adminUser } = await supabase.from("admin_users").select("email,is_active").eq("email", normalizedEmail).maybeSingle();
-        if (adminUser && adminUser.is_active !== false) {
-          await fetch("/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail, password: normalizedPassword }) }).catch(() => null);
-          onLogin();
-          return;
-        }
-        await supabase.auth.signOut();
-      }
-    }
-
     const serverBody = serverResponse ? await serverResponse.json().catch(() => null) as null | { message?: string } : null;
-    setMessage(serverBody?.message || "Supabase belum dikonfigurasi atau credential admin belum cocok.");
+    setMessage(serverBody?.message || "Email atau kata sandi admin belum sesuai.");
   }
 
   return (
