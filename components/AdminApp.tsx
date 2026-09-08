@@ -84,11 +84,16 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
 
   async function loadAll() {
     setLoading(true);
+    console.log("[CMS Admin] Memuat seluruh data dari server...");
     try {
-      const api = previewEnabled() ? null : await fetch("/api/admin/cms", { cache: "no-store" }).catch(() => null);
-      if (api?.ok) {
-        const body = await api.json() as CmsApiResponse;
-        if (body.store) {
+      const api = previewEnabled() ? null : await fetch("/api/admin/cms", { cache: "no-store" }).catch((err) => {
+        console.error("[CMS Admin Load Network Error]:", err);
+        return null;
+      });
+      if (api) {
+        const body = await api.json().catch(() => ({})) as CmsApiResponse;
+        console.log(`[CMS Admin Load Response (${api.status})]:`, body);
+        if (api.ok && body.store) {
           setStore(body.store);
           return;
         }
@@ -149,15 +154,25 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
 
     try {
       let saved: AnyRow | null = null;
+      console.log(`[CMS Admin] Mengirim data ${sectionId}:`, { id, payload });
+
       const api = await fetch("/api/admin/cms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ section: sectionId, id, payload })
-      }).catch(() => null);
+      }).catch((fetchErr) => {
+        console.error("[CMS Admin Network Error]:", fetchErr);
+        return null;
+      });
 
-      if (api?.ok) {
-        const body = await api.json() as CmsApiResponse;
-        saved = body.row || null;
+      if (api) {
+        const body = await api.json().catch(() => ({})) as CmsApiResponse & { message?: string; error?: unknown };
+        console.log(`[CMS Admin API Response (${api.status})]:`, body);
+        if (api.ok && body.row) {
+          saved = body.row;
+        } else if (!api.ok) {
+          console.error(`[CMS Admin Error ${api.status}]:`, body.message || body.error || "Gagal menyimpan ke server");
+        }
       }
 
       const isLocalMode = !saved;
@@ -186,13 +201,8 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
       setMessage("Konten berhasil disimpan.");
       navigate(sectionId);
     } catch (error) {
-      console.error("[CMS Admin Error]:", error);
-      const text = String(error instanceof Error ? error.message : error || "").toLowerCase();
-      if (text.includes("api key") || text.includes("apikey") || text.includes("jwt") || text.includes("pgrst")) {
-        setMessage("Gagal menyinkronkan ke server. Data Anda telah diselamatkan secara lokal di browser.");
-      } else {
-        setMessage(error instanceof Error ? error.message : "Gagal menyimpan data CMS.");
-      }
+      console.error("[CMS Admin Exception]:", error);
+      setMessage(error instanceof Error ? error.message : "Gagal menyimpan data CMS.");
     } finally {
       setLoading(false);
     }
@@ -200,8 +210,14 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
 
   async function remove(sectionId: Exclude<Section, "dashboard" | "settings">, id: string) {
     if (!window.confirm("Hapus konten ini dari CMS?")) return;
-    const api = await fetch(`/api/admin/cms?section=${encodeURIComponent(sectionId)}&id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => null);
+    console.log(`[CMS Admin] Menghapus data ${sectionId} id=${id}`);
+    const api = await fetch(`/api/admin/cms?section=${encodeURIComponent(sectionId)}&id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch((err) => {
+      console.error("[CMS Admin Delete Network Error]:", err);
+      return null;
+    });
     if (api?.ok) {
+      const res = await api.json().catch(() => ({}));
+      console.log("[CMS Admin Delete Response]:", res);
       setStore((current) => {
         const newStore = { ...current, [sectionId]: current[sectionId].filter((row) => row.id !== id) };
         if (typeof window !== "undefined") localStorage.setItem("qonsulin_local_cms_store", JSON.stringify(newStore));
@@ -390,19 +406,25 @@ function ImageUploadInput({ value, setValue }: { value: string; setValue: (val: 
 
   const handleUpload = async (file: File) => {
     setUploading(true);
+    console.log("[Image Upload] Mulai mengunggah file gambar:", file.name, `(${file.size} bytes)`);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/admin/upload", { method: "POST", body: formData }).catch(() => null);
-      if (res?.ok) {
-        const data = await res.json();
-        if (data.ok && data.url) {
+      const res = await fetch("/api/admin/upload", { method: "POST", body: formData }).catch((err) => {
+        console.error("[Image Upload Network Error]:", err);
+        return null;
+      });
+      if (res) {
+        const data = await res.json().catch(() => ({}));
+        console.log(`[Image Upload API Response (${res.status})]:`, data);
+        if (res.ok && data.ok && data.url) {
           setValue(data.url);
           return;
         }
       }
 
       // Base64 Data URL fallback for instant preview
+      console.warn("[Image Upload] Menggunakan pratinjau Base64 lokal");
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -410,7 +432,8 @@ function ImageUploadInput({ value, setValue }: { value: string; setValue: (val: 
         }
       };
       reader.readAsDataURL(file);
-    } catch {
+    } catch (err) {
+      console.error("[Image Upload Exception]:", err);
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {

@@ -71,12 +71,12 @@ export async function GET(request: NextRequest) {
 
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();
-  const supabase = adminClient || publicClient;
+  const supabase = (adminClient || publicClient) as any;
   if (!supabase) {
     return NextResponse.json({ ok: true, store: getLocalCmsStore(), isLocal: true });
   }
 
-  let [posts, activities, testimonials, leads, galleries, streaming, companions] = await Promise.all([
+  const [posts, activities, testimonials, leads, galleries, streaming, companions] = await Promise.all([
     supabase.from("blog_posts").select("*").order("created_at", { ascending: false }),
     supabase.from("activities").select("*").order("created_at", { ascending: false }),
     supabase.from("testimonials").select("*").order("created_at", { ascending: false }),
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
   ]);
 
-  let failed = [posts, activities, testimonials, leads, galleries, streaming, companions].find((result) => result.error);
+  const failed = [posts, activities, testimonials, leads, galleries, streaming, companions].find((result: any) => result.error);
 
   if (failed?.error) {
     console.error("[CMS Server Error] Supabase GET failed, using local store fallback:", failed.error.message || failed.error);
@@ -139,7 +139,7 @@ function filterPayload(section: CmsSection, payload: Record<string, unknown>): R
 export async function POST(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
 
-  const body = await request.json().catch(() => ({})) as { section?: unknown; id?: unknown; payload?: unknown };
+  const body = (await request.json().catch(() => ({}))) as { section?: unknown; id?: unknown; payload?: unknown };
   const section = sectionFrom(body.section);
   if (!section || !body.payload || typeof body.payload !== "object" || Array.isArray(body.payload)) {
     return NextResponse.json({ ok: false, message: "Payload tidak valid." }, { status: 400 });
@@ -153,7 +153,9 @@ export async function POST(request: NextRequest) {
 
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();
-  const supabase = adminClient || publicClient;
+  const supabase = (adminClient || publicClient) as any;
+
+  let lastDbError: string | null = null;
 
   if (supabase) {
     try {
@@ -170,12 +172,12 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      let result = targetId
+      let result: any = targetId
         ? await supabase.from(table).update(cleanPayload).eq("id", targetId).select().single()
         : await supabase.from(table).insert([cleanPayload]).select().single();
 
       // If insert failed due to duplicate unique key (e.g. slug already exists in database), update the existing record
-      if (result.error && !targetId && (result.error as any).code === "23505") {
+      if (result.error && !targetId && result.error.code === "23505") {
         if (cleanPayload.slug && (section === "posts" || section === "galleries" || section === "streaming")) {
           const { data: existing } = await supabase.from(table).select("id").eq("slug", String(cleanPayload.slug)).maybeSingle();
           if (existing?.id) {
@@ -189,15 +191,17 @@ export async function POST(request: NextRequest) {
         upsertLocalCmsRow(section, result.data as any, targetId || rawId);
         return NextResponse.json({ ok: true, row: result.data });
       } else if (result.error) {
-        console.error("[CMS Server Error] Supabase write error:", result.error.message || result.error);
+        lastDbError = result.error.message || String(result.error);
+        console.error("[CMS Server Error] Supabase write error:", lastDbError);
       }
-    } catch (err) {
+    } catch (err: any) {
+      lastDbError = err?.message || String(err);
       console.error("[CMS Server Error] Supabase exception during write:", err);
     }
   }
 
   const localRow = upsertLocalCmsRow(section, normalized, rawId);
-  return NextResponse.json({ ok: true, row: localRow, isLocal: true });
+  return NextResponse.json({ ok: true, row: localRow, isLocal: true, dbError: lastDbError });
 }
 
 export async function DELETE(request: NextRequest) {
@@ -209,7 +213,7 @@ export async function DELETE(request: NextRequest) {
 
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();
-  const supabase = adminClient || publicClient;
+  const supabase = (adminClient || publicClient) as any;
 
   if (supabase) {
     try {
@@ -222,7 +226,7 @@ export async function DELETE(request: NextRequest) {
         }
         console.error("[CMS Server Error] Supabase delete error:", error.message || error);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[CMS Server Error] Supabase delete exception:", err);
     }
   }
