@@ -42,16 +42,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Local file storage fallback for local testing
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    try {
+      const uploadsDir = path.join(process.cwd(), "public", "uploads");
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      const filePath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filePath, buffer);
+      return NextResponse.json({ ok: true, url: `/uploads/${filename}`, isLocal: true });
+    } catch {
+      // If serverless filesystem is read-only (e.g. Vercel), fallback to data URI
+      const base64 = buffer.toString("base64");
+      const dataUri = `data:${file.type || "image/png"};base64,${base64}`;
+      return NextResponse.json({ ok: true, url: dataUri, isLocal: true });
     }
-    const filePath = path.join(uploadsDir, filename);
-    fs.writeFileSync(filePath, buffer);
-
-    return NextResponse.json({ ok: true, url: `/uploads/${filename}`, isLocal: true });
   } catch (error: any) {
-    console.error("Upload error:", error);
-    return NextResponse.json({ ok: false, message: error?.message || "Gagal upload" }, { status: 500 });
+    console.error("[Upload Server Error]:", error);
+    return NextResponse.json({ ok: false, message: "Gagal mengunggah file gambar." }, { status: 500 });
   }
 }

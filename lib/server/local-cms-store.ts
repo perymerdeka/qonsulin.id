@@ -40,12 +40,18 @@ function mergeList<T extends { id: string }>(savedList: T[] | undefined, default
   return [...savedList, ...missingDefaults];
 }
 
+let inMemoryStore: Store | null = null;
+
 export function getLocalCmsStore(): Store {
+  if (inMemoryStore) {
+    return inMemoryStore;
+  }
+
   try {
     if (fs.existsSync(STORE_PATH)) {
       const content = fs.readFileSync(STORE_PATH, "utf-8");
       const parsed = JSON.parse(content);
-      return {
+      inMemoryStore = {
         posts: mergeList(parsed.posts, initialFallbackStore.posts),
         activities: mergeList(parsed.activities, initialFallbackStore.activities),
         testimonials: mergeList(parsed.testimonials, initialFallbackStore.testimonials),
@@ -54,15 +60,18 @@ export function getLocalCmsStore(): Store {
         streaming: mergeList(parsed.streaming, initialFallbackStore.streaming),
         companions: mergeList(parsed.companions, initialFallbackStore.companions)
       };
+      return inMemoryStore;
     }
   } catch (err) {
-    console.error("Error reading local CMS store:", err);
+    console.warn("[Local CMS Store] File read warning:", err);
   }
 
-  return initialFallbackStore;
+  inMemoryStore = { ...initialFallbackStore };
+  return inMemoryStore;
 }
 
 export function saveLocalCmsStore(store: Store) {
+  inMemoryStore = store;
   try {
     const dir = path.dirname(STORE_PATH);
     if (!fs.existsSync(dir)) {
@@ -70,7 +79,8 @@ export function saveLocalCmsStore(store: Store) {
     }
     fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), "utf-8");
   } catch (err) {
-    console.error("Error saving local CMS store:", err);
+    // Expected on serverless hosting (e.g. Vercel) where filesystem is read-only
+    console.warn("[Local CMS Store] File write skipped (in-memory preserved):", err);
   }
 }
 

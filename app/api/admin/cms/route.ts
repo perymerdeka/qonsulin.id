@@ -89,6 +89,7 @@ export async function GET(request: NextRequest) {
   let failed = [posts, activities, testimonials, leads, galleries, streaming, companions].find((result) => result.error);
 
   if (failed?.error) {
+    console.error("[CMS Server Error] Supabase GET failed, using local store fallback:", failed.error.message || failed.error);
     return NextResponse.json({ ok: true, store: getLocalCmsStore(), isLocal: true });
   }
 
@@ -109,18 +110,46 @@ export async function GET(request: NextRequest) {
   });
 }
 
+const allowedColumns: Record<CmsSection, string[]> = {
+  posts: ["title", "slug", "excerpt", "content", "cover_image_url", "category", "tags", "status", "seo_title", "seo_description", "published_at"],
+  activities: ["title", "description", "type", "source_url", "image_url", "date", "status"],
+  testimonials: ["quote", "persona", "context", "status"],
+  "lead-magnets": ["title", "description", "file_url", "cta_label", "status"],
+  galleries: ["title", "slug", "description", "cover_image_url", "source_url", "event_date", "status"],
+  streaming: ["title", "slug", "description", "video_url", "thumbnail_url", "source_label", "stream_type", "published_at", "live_at", "sort_order", "is_featured", "status"],
+  companions: ["name", "role", "badge", "credential", "image_url", "description", "preview", "focus_tags", "education", "focus", "experience", "languages", "cta_enabled", "sort_order", "status"]
+};
+
+function isValidUuid(value?: string | null): boolean {
+  if (!value || typeof value !== "string") return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function filterPayload(section: CmsSection, payload: Record<string, unknown>): Record<string, unknown> {
+  const allowed = allowedColumns[section] || [];
+  const filtered: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (key in payload) {
+      filtered[key] = payload[key] === "" ? null : payload[key];
+    }
+  }
+  return filtered;
+}
+
 export async function POST(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
 
   const body = await request.json().catch(() => ({})) as { section?: unknown; id?: unknown; payload?: unknown };
   const section = sectionFrom(body.section);
   if (!section || !body.payload || typeof body.payload !== "object" || Array.isArray(body.payload)) {
-    return NextResponse.json({ ok: false, message: "Payload CMS tidak valid." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "Payload tidak valid." }, { status: 400 });
   }
 
   const table = tableBySection[section];
-  const payload = normalizePayload(section, body.payload as Record<string, unknown>);
-  const id = typeof body.id === "string" && body.id ? body.id : null;
+  const normalized = normalizePayload(section, body.payload as Record<string, unknown>);
+  const cleanPayload = filterPayload(section, normalized);
+  const rawId = typeof body.id === "string" && body.id ? body.id : null;
+  const isRealUuid = isValidUuid(rawId);
 
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();
@@ -128,20 +157,46 @@ export async function POST(request: NextRequest) {
 
   if (supabase) {
     try {
-      const result = id
-        ? await supabase.from(table).update(payload).eq("id", id).select().single()
-        : await supabase.from(table).insert([payload]).select().single();
+      let targetId: string | null = isRealUuid ? rawId : null;
+
+      // If ID is not a real UUID (e.g. from seeded fallback items), check if row already exists by unique key (slug / name)
+      if (!targetId) {
+        if (cleanPayload.slug && (section === "posts" || section === "galleries" || section === "streaming")) {
+          const { data: existing } = await supabase.from(table).select("id").eq("slug", String(cleanPayload.slug)).maybeSingle();
+          if (existing?.id) targetId = existing.id;
+        } else if (cleanPayload.name && section === "companions") {
+          const { data: existing } = await supabase.from(table).select("id").eq("name", String(cleanPayload.name)).maybeSingle();
+          if (existing?.id) targetId = existing.id;
+        }
+      }
+
+      let result = targetId
+        ? await supabase.from(table).update(cleanPayload).eq("id", targetId).select().single()
+        : await supabase.from(table).insert([cleanPayload]).select().single();
+
+      // If insert failed due to duplicate unique key (e.g. slug already exists in database), update the existing record
+      if (result.error && !targetId && (result.error as any).code === "23505") {
+        if (cleanPayload.slug && (section === "posts" || section === "galleries" || section === "streaming")) {
+          const { data: existing } = await supabase.from(table).select("id").eq("slug", String(cleanPayload.slug)).maybeSingle();
+          if (existing?.id) {
+            result = await supabase.from(table).update(cleanPayload).eq("id", existing.id).select().single();
+            targetId = existing.id;
+          }
+        }
+      }
 
       if (!result.error && result.data) {
-        upsertLocalCmsRow(section, result.data as any, id);
+        upsertLocalCmsRow(section, result.data as any, targetId || rawId);
         return NextResponse.json({ ok: true, row: result.data });
+      } else if (result.error) {
+        console.error("[CMS Server Error] Supabase write error:", result.error.message || result.error);
       }
     } catch (err) {
-      console.warn("Supabase insert/update failed, falling back to local store:", err);
+      console.error("[CMS Server Error] Supabase exception during write:", err);
     }
   }
 
-  const localRow = upsertLocalCmsRow(section, payload, id);
+  const localRow = upsertLocalCmsRow(section, normalized, rawId);
   return NextResponse.json({ ok: true, row: localRow, isLocal: true });
 }
 
@@ -149,8 +204,8 @@ export async function DELETE(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
 
   const section = sectionFrom(request.nextUrl.searchParams.get("section"));
-  const id = request.nextUrl.searchParams.get("id");
-  if (!section || !id) return NextResponse.json({ ok: false, message: "Section atau id tidak valid." }, { status: 400 });
+  const rawId = request.nextUrl.searchParams.get("id");
+  if (!section || !rawId) return NextResponse.json({ ok: false, message: "Parameter tidak valid." }, { status: 400 });
 
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();
@@ -158,16 +213,20 @@ export async function DELETE(request: NextRequest) {
 
   if (supabase) {
     try {
-      const { error } = await supabase.from(tableBySection[section]).delete().eq("id", id);
-      if (!error) {
-        deleteLocalCmsRow(section, id);
-        return NextResponse.json({ ok: true });
+      const isRealUuid = isValidUuid(rawId);
+      if (isRealUuid) {
+        const { error } = await supabase.from(tableBySection[section]).delete().eq("id", rawId);
+        if (!error) {
+          deleteLocalCmsRow(section, rawId);
+          return NextResponse.json({ ok: true });
+        }
+        console.error("[CMS Server Error] Supabase delete error:", error.message || error);
       }
     } catch (err) {
-      console.warn("Supabase delete failed, falling back to local store:", err);
+      console.error("[CMS Server Error] Supabase delete exception:", err);
     }
   }
 
-  deleteLocalCmsRow(section, id);
+  deleteLocalCmsRow(section, rawId);
   return NextResponse.json({ ok: true, isLocal: true });
 }

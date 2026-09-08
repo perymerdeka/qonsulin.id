@@ -5,8 +5,8 @@ function getServiceRoleKey() {
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_SERVICE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_ADMIN_KEY
   )?.trim().replace(/^['"]|['"]$/g, "");
 }
 
@@ -14,7 +14,7 @@ function getSupabaseUrl() {
   return (
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
     process.env.SUPABASE_URL
-  )?.trim().replace(/^['"]|['"]$/g, "");
+  )?.trim().replace(/^['"]|['"]$/g, "").replace(/\/+$/, "");
 }
 
 export function hasSupabaseAdminEnv() {
