@@ -28,8 +28,8 @@ async function listFromSupabase<T>(table: string, fallback: T[], includeDrafts =
     let query = supabase.from(table).select("*").order(order, { ascending: false });
     if (!includeDrafts) query = query.eq("status", "published");
     const { data, error } = await query;
-    if (error) return fallback;
-    return ((data || []) as T[]).length ? (data || []) as T[] : fallback;
+    if (error || !data) return fallback;
+    return data as T[];
   } catch {
     return fallback;
   }
@@ -75,7 +75,7 @@ export async function getPublishedGalleryEvents() {
       .order("event_date", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
     if (error) return fallbackGalleryEvents;
-    const rows = (data || []).map((event) => ({
+    const rows = ((data || []) as Record<string, any>[]).map((event) => ({
       ...event,
       media_count: Array.isArray(event.gallery_media) ? event.gallery_media[0]?.count || 0 : event.media_count || 0
     })) as GalleryEvent[];

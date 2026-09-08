@@ -6,25 +6,7 @@ import { getSupabasePublicClient } from "@/lib/supabase";
 const STORE_PATH = path.join(process.cwd(), "data", "local-cms-store.json");
 
 export const initialFallbackStore: Store = {
-  posts: [
-    ...fallbackPosts,
-    {
-      id: "seed-burnout-article",
-      title: "Mengapa Burnout Bukan Sekadar Rasa Lelah Biasa?",
-      slug: "mengapa-burnout-bukan-sekadar-rasa-lelah-biasa",
-      excerpt: "Banyak orang menganggap burnout sama dengan capek kerja biasa. Padahal, kelelahan batin dampak dari stres berkepanjangan butuh penanganan khusus yang berbeda.",
-      content: "## Mengenal Burnout vs Kelelahan Biasa\n\nBurnout bukan sekadar kelelahan fisik setelah seharian bekerja. Ini adalah kondisi kelelahan emosional, mental, dan fisik yang disebabkan oleh stres berkepanjangan yang tidak teratasi.\n\n### Tanda-tanda Utama Burnout:\n1. **Kelelahan Kronis**: Merasa lelah secara emosional dan fisik hampir setiap hari.\n2. **Kinisme dan Detachment**: Merasa asing atau tidak peduli dengan pekerjaan atau orang di sekitar.\n3. **Penurunan Efektivitas**: Merasa pekerjaan yang dilakukan tidak berguna atau tidak pernah cukup baik.\n\n### Langkah Awal Mengatasi Burnout:\n- **Beri Jeda**: Ambil waktu istirahat yang tidak terganggu oleh pekerjaan.\n- **Tetapkan Batas yang Jelas**: Belajarlah berkata tidak pada beban tambahan.\n- **Bicara dengan Seseorang**: Temukan ruang cerita yang aman seperti teman dekat atau konselor partner QONSULIN.ID.",
-      cover_image_url: null,
-      category: "Kesehatan Mental",
-      tags: ["burnout", "kesehatan batin", "self-care", "produktifitas"],
-      status: "published",
-      seo_title: "Mengapa Burnout Bukan Sekadar Lelah Biasa | Qonsulin.id",
-      seo_description: "Kenali perbedaan antara kelelahan fisik biasa dan burnout mental, serta cara praktis mengatasinya.",
-      published_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  ],
+  posts: fallbackPosts,
   activities: fallbackActivities,
   testimonials: fallbackTestimonials,
   "lead-magnets": fallbackLeadMagnets,

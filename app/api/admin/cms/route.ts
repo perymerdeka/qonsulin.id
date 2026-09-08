@@ -76,36 +76,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, store: getLocalCmsStore(), isLocal: true });
   }
 
-  const [posts, activities, testimonials, leads, galleries, streaming, companions] = await Promise.all([
+  const [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes] = await Promise.all([
     supabase.from("blog_posts").select("*").order("created_at", { ascending: false }),
     supabase.from("activities").select("*").order("created_at", { ascending: false }),
     supabase.from("testimonials").select("*").order("created_at", { ascending: false }),
     supabase.from("lead_magnets").select("*").order("created_at", { ascending: false }),
-    supabase.from("gallery_events").select("*, gallery_media(count)").order("created_at", { ascending: false }),
+    supabase.from("gallery_events").select("*").order("created_at", { ascending: false }),
     supabase.from("streaming_videos").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
     supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
   ]);
 
-  const failed = [posts, activities, testimonials, leads, galleries, streaming, companions].find((result: any) => result.error);
-
-  if (failed?.error) {
-    console.error("[CMS Server Error] Supabase GET failed, using local store fallback:", failed.error.message || failed.error);
-    return NextResponse.json({ ok: true, store: getLocalCmsStore(), isLocal: true });
-  }
+  const localStore = getLocalCmsStore();
 
   return NextResponse.json({
     ok: true,
     store: {
-      posts: posts.data || [],
-      activities: activities.data || [],
-      testimonials: testimonials.data || [],
-      "lead-magnets": leads.data || [],
-      galleries: (galleries.data || []).map((event: any) => ({
-        ...event,
-        media_count: Array.isArray(event.gallery_media) ? event.gallery_media[0]?.count || 0 : event.media_count || 0
-      })),
-      streaming: streaming.data || [],
-      companions: companions.data || []
+      posts: !postsRes.error && postsRes.data ? postsRes.data : localStore.posts,
+      activities: !activitiesRes.error && activitiesRes.data ? activitiesRes.data : localStore.activities,
+      testimonials: !testimonialsRes.error && testimonialsRes.data ? testimonialsRes.data : localStore.testimonials,
+      "lead-magnets": !leadsRes.error && leadsRes.data ? leadsRes.data : localStore["lead-magnets"],
+      galleries: !galleriesRes.error && galleriesRes.data ? galleriesRes.data : localStore.galleries,
+      streaming: !streamingRes.error && streamingRes.data ? streamingRes.data : localStore.streaming,
+      companions: !companionsRes.error && companionsRes.data ? companionsRes.data : localStore.companions
     }
   });
 }
