@@ -203,7 +203,7 @@ function AboutPage() {
           <span className="tag">The Philosophy: Heart by Heart</span>
           <h2>Sebab Setiap Cerita Berharga Untuk Didengar Tanpa Prasangka</h2>
           <p>QONSULIN.ID didirikan karena keresahan mendalam mengenai betapa sulitnya anak muda di era digital saat ini mendapatkan kawan dengar yang aman. Tekanan akademik perkuliahan, bayang-bayang kegagalan skripsi, perbandingan standar hidup yang semu di media sosial, hingga gesekan relasi asmara kerap kali bertumpuk di dalam pikiran.</p>
-          <p>Kami mengamati bahwa banyak orang awam atau mahasiswa memendam tekanan stresnya hingga membengkak menjadi krisis depresi akut, sekadar karena akses konseling formal psikologi yang terstigma "kaku" dan biaya terapinya mahal.</p>
+          <p>Kami mengamati bahwa banyak orang awam atau mahasiswa memendam tekanan stresnya hingga membengkak menjadi krisis depresi akut, sekadar karena akses konseling formal psikologi yang terstigma &quot;kaku&quot; dan biaya terapinya mahal.</p>
           <p><strong>Melalui pendekatan Heart by Heart,</strong> kami membalik cara lama itu. Kami memosisikan QONSULIN.ID sebagai penolong pertama batin, menyediakan rekan pendengar bersahabat dan sistem rujukan bertahap.</p>
         </div>
         <aside className="about-identity-card">
@@ -234,7 +234,7 @@ function AboutPage() {
           <article className="about-vision-card">
             <span className="icon-tile"><HeartHandshake size={24} /></span>
             <h3>Visi Agung Kami</h3>
-            <p>"Menjadi platform konsultasi online dan pendampingan mental wellness terkemuka nasional yang aman, humanis, bertahap, dan mudah diakses oleh siapa pun demi menciptakan masa depan generasi muda yang stabil secara emosional."</p>
+            <p>&quot;Menjadi platform konsultasi online dan pendampingan mental wellness terkemuka nasional yang aman, humanis, bertahap, dan mudah diakses oleh siapa pun demi menciptakan masa depan generasi muda yang stabil secara emosional.&quot;</p>
           </article>
           <div>
             <div className="section-head center about-dark-head"><span className="tag">Commitment Grid</span><h2>Garansi Arah Visi & Misi Kami</h2></div>
