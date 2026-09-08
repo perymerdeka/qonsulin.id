@@ -70,12 +70,12 @@ export async function GET(request: NextRequest) {
 
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();
-  const supabase = (adminClient || publicClient) as any;
+  let supabase = (adminClient || publicClient) as any;
   if (!supabase) {
     return NextResponse.json({ ok: false, message: "Supabase client tidak tersedia. Periksa variabel environment Supabase." }, { status: 500 });
   }
 
-  const [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes] = await Promise.all([
+  let [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes] = await Promise.all([
     supabase.from("blog_posts").select("*").order("created_at", { ascending: false }),
     supabase.from("activities").select("*").order("created_at", { ascending: false }),
     supabase.from("testimonials").select("*").order("created_at", { ascending: false }),
@@ -84,6 +84,22 @@ export async function GET(request: NextRequest) {
     supabase.from("streaming_videos").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
     supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
   ]);
+
+  // Jika adminClient gagal karena Invalid API key (biasanya karena SUPABASE_SERVICE_ROLE_KEY di hosting Vercel belum diperbarui),
+  // otomatis coba pulihkan dengan publicClient (anon key yang terbukti valid) agar 47 artikel database live tetap tampil!
+  if (postsRes.error && postsRes.error.message?.toLowerCase().includes("invalid api key") && publicClient && supabase !== publicClient) {
+    console.warn("[CMS Admin GET] Service role key tidak valid di server hosting, memulihkan data dengan public client Supabase...");
+    supabase = publicClient;
+    [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes] = await Promise.all([
+      supabase.from("blog_posts").select("*").order("created_at", { ascending: false }),
+      supabase.from("activities").select("*").order("created_at", { ascending: false }),
+      supabase.from("testimonials").select("*").order("created_at", { ascending: false }),
+      supabase.from("lead_magnets").select("*").order("created_at", { ascending: false }),
+      supabase.from("gallery_events").select("*").order("created_at", { ascending: false }),
+      supabase.from("streaming_videos").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
+      supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
+    ]);
+  }
 
   if (postsRes.error) {
     console.error("[CMS Server Error] Gagal membaca blog_posts dari Supabase:", postsRes.error);
