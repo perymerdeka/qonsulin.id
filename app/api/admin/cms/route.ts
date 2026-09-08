@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminCookieName, verifyAdminSessionValue } from "@/lib/server/admin-auth";
 import { getSupabaseAdminClient } from "@/lib/server/supabase-admin";
 import { getSupabasePublicClient } from "@/lib/supabase";
-import { deleteLocalCmsRow, getLocalCmsStore, upsertLocalCmsRow } from "@/lib/server/local-cms-store";
 
 type CmsSection = "posts" | "activities" | "testimonials" | "lead-magnets" | "galleries" | "streaming" | "companions";
 
@@ -72,8 +71,21 @@ export async function GET(request: NextRequest) {
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();
   const supabase = (adminClient || publicClient) as any;
+
   if (!supabase) {
-    return NextResponse.json({ ok: true, store: getLocalCmsStore(), isLocal: true });
+    return NextResponse.json({
+      ok: false,
+      message: "Database Supabase tidak terkonfigurasi. Pastikan NEXT_PUBLIC_SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY sudah terpasang di Environment Variables.",
+      store: {
+        posts: [],
+        activities: [],
+        testimonials: [],
+        "lead-magnets": [],
+        galleries: [],
+        streaming: [],
+        companions: []
+      }
+    }, { status: 500 });
   }
 
   const [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes] = await Promise.all([
@@ -86,18 +98,25 @@ export async function GET(request: NextRequest) {
     supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
   ]);
 
-  const localStore = getLocalCmsStore();
-
   return NextResponse.json({
     ok: true,
     store: {
-      posts: !postsRes.error && postsRes.data ? postsRes.data : localStore.posts,
-      activities: !activitiesRes.error && activitiesRes.data ? activitiesRes.data : localStore.activities,
-      testimonials: !testimonialsRes.error && testimonialsRes.data ? testimonialsRes.data : localStore.testimonials,
-      "lead-magnets": !leadsRes.error && leadsRes.data ? leadsRes.data : localStore["lead-magnets"],
-      galleries: !galleriesRes.error && galleriesRes.data ? galleriesRes.data : localStore.galleries,
-      streaming: !streamingRes.error && streamingRes.data ? streamingRes.data : localStore.streaming,
-      companions: !companionsRes.error && companionsRes.data ? companionsRes.data : localStore.companions
+      posts: postsRes.data || [],
+      activities: activitiesRes.data || [],
+      testimonials: testimonialsRes.data || [],
+      "lead-magnets": leadsRes.data || [],
+      galleries: galleriesRes.data || [],
+      streaming: streamingRes.data || [],
+      companions: companionsRes.data || []
+    },
+    errors: {
+      posts: postsRes.error?.message,
+      activities: activitiesRes.error?.message,
+      testimonials: testimonialsRes.error?.message,
+      "lead-magnets": leadsRes.error?.message,
+      galleries: galleriesRes.error?.message,
+      streaming: streamingRes.error?.message,
+      companions: companionsRes.error?.message
     }
   });
 }
@@ -137,63 +156,58 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "Payload tidak valid." }, { status: 400 });
   }
 
+  const adminClient = getSupabaseAdminClient();
+  const publicClient = getSupabasePublicClient();
+  const supabase = (adminClient || publicClient) as any;
+
+  if (!supabase) {
+    return NextResponse.json({ ok: false, message: "Database Supabase tidak terhubung di server." }, { status: 500 });
+  }
+
   const table = tableBySection[section];
   const normalized = normalizePayload(section, body.payload as Record<string, unknown>);
   const cleanPayload = filterPayload(section, normalized);
   const rawId = typeof body.id === "string" && body.id ? body.id : null;
   const isRealUuid = isValidUuid(rawId);
 
-  const adminClient = getSupabaseAdminClient();
-  const publicClient = getSupabasePublicClient();
-  const supabase = (adminClient || publicClient) as any;
+  try {
+    let targetId: string | null = isRealUuid ? rawId : null;
 
-  let lastDbError: string | null = null;
-
-  if (supabase) {
-    try {
-      let targetId: string | null = isRealUuid ? rawId : null;
-
-      // If ID is not a real UUID (e.g. from seeded fallback items), check if row already exists by unique key (slug / name)
-      if (!targetId) {
-        if (cleanPayload.slug && (section === "posts" || section === "galleries" || section === "streaming")) {
-          const { data: existing } = await supabase.from(table).select("id").eq("slug", String(cleanPayload.slug)).maybeSingle();
-          if (existing?.id) targetId = existing.id;
-        } else if (cleanPayload.name && section === "companions") {
-          const { data: existing } = await supabase.from(table).select("id").eq("name", String(cleanPayload.name)).maybeSingle();
-          if (existing?.id) targetId = existing.id;
-        }
+    if (!targetId) {
+      if (cleanPayload.slug && (section === "posts" || section === "galleries" || section === "streaming")) {
+        const { data: existing } = await supabase.from(table).select("id").eq("slug", String(cleanPayload.slug)).maybeSingle();
+        if (existing?.id) targetId = existing.id;
+      } else if (cleanPayload.name && section === "companions") {
+        const { data: existing } = await supabase.from(table).select("id").eq("name", String(cleanPayload.name)).maybeSingle();
+        if (existing?.id) targetId = existing.id;
       }
-
-      let result: any = targetId
-        ? await supabase.from(table).update(cleanPayload).eq("id", targetId).select().single()
-        : await supabase.from(table).insert([cleanPayload]).select().single();
-
-      // If insert failed due to duplicate unique key (e.g. slug already exists in database), update the existing record
-      if (result.error && !targetId && result.error.code === "23505") {
-        if (cleanPayload.slug && (section === "posts" || section === "galleries" || section === "streaming")) {
-          const { data: existing } = await supabase.from(table).select("id").eq("slug", String(cleanPayload.slug)).maybeSingle();
-          if (existing?.id) {
-            result = await supabase.from(table).update(cleanPayload).eq("id", existing.id).select().single();
-            targetId = existing.id;
-          }
-        }
-      }
-
-      if (!result.error && result.data) {
-        upsertLocalCmsRow(section, result.data as any, targetId || rawId);
-        return NextResponse.json({ ok: true, row: result.data });
-      } else if (result.error) {
-        lastDbError = result.error.message || String(result.error);
-        console.error("[CMS Server Error] Supabase write error:", lastDbError);
-      }
-    } catch (err: any) {
-      lastDbError = err?.message || String(err);
-      console.error("[CMS Server Error] Supabase exception during write:", err);
     }
-  }
 
-  const localRow = upsertLocalCmsRow(section, normalized, rawId);
-  return NextResponse.json({ ok: true, row: localRow, isLocal: true, dbError: lastDbError });
+    let result: any = targetId
+      ? await supabase.from(table).update(cleanPayload).eq("id", targetId).select().single()
+      : await supabase.from(table).insert([cleanPayload]).select().single();
+
+    if (result.error && !targetId && result.error.code === "23505") {
+      if (cleanPayload.slug && (section === "posts" || section === "galleries" || section === "streaming")) {
+        const { data: existing } = await supabase.from(table).select("id").eq("slug", String(cleanPayload.slug)).maybeSingle();
+        if (existing?.id) {
+          result = await supabase.from(table).update(cleanPayload).eq("id", existing.id).select().single();
+        }
+      }
+    }
+
+    if (result.error || !result.data) {
+      const errorMsg = result.error?.message || "Gagal menyimpan ke database Supabase.";
+      console.error("[CMS Server Error] Supabase save error:", errorMsg);
+      return NextResponse.json({ ok: false, message: errorMsg }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, row: result.data });
+  } catch (err: any) {
+    const errorMsg = err?.message || String(err);
+    console.error("[CMS Server Error] Supabase exception:", err);
+    return NextResponse.json({ ok: false, message: errorMsg }, { status: 500 });
+  }
 }
 
 export async function DELETE(request: NextRequest) {
@@ -207,22 +221,25 @@ export async function DELETE(request: NextRequest) {
   const publicClient = getSupabasePublicClient();
   const supabase = (adminClient || publicClient) as any;
 
-  if (supabase) {
-    try {
-      const isRealUuid = isValidUuid(rawId);
-      if (isRealUuid) {
-        const { error } = await supabase.from(tableBySection[section]).delete().eq("id", rawId);
-        if (!error) {
-          deleteLocalCmsRow(section, rawId);
-          return NextResponse.json({ ok: true });
-        }
-        console.error("[CMS Server Error] Supabase delete error:", error.message || error);
-      }
-    } catch (err: any) {
-      console.error("[CMS Server Error] Supabase delete exception:", err);
-    }
+  if (!supabase) {
+    return NextResponse.json({ ok: false, message: "Database Supabase tidak terhubung di server." }, { status: 500 });
   }
 
-  deleteLocalCmsRow(section, rawId);
-  return NextResponse.json({ ok: true, isLocal: true });
+  try {
+    const isRealUuid = isValidUuid(rawId);
+    if (!isRealUuid) {
+      return NextResponse.json({ ok: false, message: "ID data tidak valid di database." }, { status: 400 });
+    }
+
+    const { error } = await supabase.from(tableBySection[section]).delete().eq("id", rawId);
+    if (error) {
+      console.error("[CMS Server Error] Supabase delete error:", error.message || error);
+      return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    console.error("[CMS Server Error] Supabase delete exception:", err);
+    return NextResponse.json({ ok: false, message: err?.message || "Gagal menghapus data di database." }, { status: 500 });
+  }
 }

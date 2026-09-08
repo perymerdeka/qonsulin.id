@@ -1,13 +1,5 @@
 import { getSupabasePublicClient } from "@/lib/supabase";
 import {
-  fallbackActivities,
-  fallbackCompanions,
-  fallbackGalleryEvents,
-  fallbackGalleryMedia,
-  fallbackLeadMagnets,
-  fallbackPosts,
-  fallbackStreamingVideos,
-  fallbackTestimonials,
   type ActivityItem,
   type BlogPost,
   type CompanionProfile,
@@ -20,23 +12,23 @@ import {
 
 export * from "@/lib/cms-fallback";
 
-async function listFromSupabase<T>(table: string, fallback: T[], includeDrafts = false, order = "created_at") {
+async function listFromSupabase<T>(table: string, includeDrafts = false, order = "created_at"): Promise<T[]> {
   const supabase = getSupabasePublicClient();
-  if (!supabase) return fallback;
+  if (!supabase) return [];
 
   try {
     let query = supabase.from(table).select("*").order(order, { ascending: false });
     if (!includeDrafts) query = query.eq("status", "published");
     const { data, error } = await query;
-    if (error || !data) return fallback;
+    if (error || !data) return [];
     return data as T[];
   } catch {
-    return fallback;
+    return [];
   }
 }
 
 export async function getPublishedPosts() {
-  return listFromSupabase<BlogPost>("blog_posts", fallbackPosts.filter((post) => post.status === "published"));
+  return listFromSupabase<BlogPost>("blog_posts");
 }
 
 export async function getPostBySlug(slug: string) {
@@ -47,25 +39,24 @@ export async function getPostBySlug(slug: string) {
       if (!error && data) return data as BlogPost;
     } catch {}
   }
-
-  return fallbackPosts.find((post) => post.slug === slug) || null;
+  return null;
 }
 
 export async function getPublishedActivities() {
-  return listFromSupabase<ActivityItem>("activities", fallbackActivities.filter((item) => item.status === "published"));
+  return listFromSupabase<ActivityItem>("activities");
 }
 
 export async function getPublishedTestimonials() {
-  return listFromSupabase<Testimonial>("testimonials", fallbackTestimonials.filter((item) => item.status === "published"));
+  return listFromSupabase<Testimonial>("testimonials");
 }
 
 export async function getPublishedLeadMagnets() {
-  return listFromSupabase<LeadMagnet>("lead_magnets", fallbackLeadMagnets.filter((item) => item.status === "published"));
+  return listFromSupabase<LeadMagnet>("lead_magnets");
 }
 
 export async function getPublishedGalleryEvents() {
   const supabase = getSupabasePublicClient();
-  if (!supabase) return fallbackGalleryEvents;
+  if (!supabase) return [];
 
   try {
     const { data, error } = await supabase
@@ -74,14 +65,14 @@ export async function getPublishedGalleryEvents() {
       .eq("status", "published")
       .order("event_date", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
-    if (error) return fallbackGalleryEvents;
-    const rows = ((data || []) as Record<string, any>[]).map((event) => ({
+    if (error || !data) return [];
+    const rows = (data as Record<string, any>[]).map((event) => ({
       ...event,
       media_count: Array.isArray(event.gallery_media) ? event.gallery_media[0]?.count || 0 : event.media_count || 0
     })) as GalleryEvent[];
-    return rows.length ? rows : fallbackGalleryEvents;
+    return rows;
   } catch {
-    return fallbackGalleryEvents;
+    return [];
   }
 }
 
@@ -93,29 +84,46 @@ export async function getGalleryEventBySlug(slug: string) {
       if (!error && data) return data as GalleryEvent;
     } catch {}
   }
-
-  return fallbackGalleryEvents.find((event) => event.slug === slug) || null;
+  return null;
 }
 
 export async function getGalleryMedia(eventId: string) {
   const supabase = getSupabasePublicClient();
-  if (!supabase) return fallbackGalleryMedia.filter((item) => item.gallery_event_id === eventId);
+  if (!supabase) return [];
 
   try {
     const { data, error } = await supabase.from("gallery_media").select("*").eq("gallery_event_id", eventId).order("sort_order", { ascending: true });
-    if (error) return fallbackGalleryMedia.filter((item) => item.gallery_event_id === eventId);
-    return (data || []) as GalleryMedia[];
+    if (error || !data) return [];
+    return data as GalleryMedia[];
   } catch {
-    return fallbackGalleryMedia.filter((item) => item.gallery_event_id === eventId);
+    return [];
   }
 }
 
 export async function getPublishedStreamingVideos() {
-  const videos = await listFromSupabase<StreamingVideo>("streaming_videos", fallbackStreamingVideos, false, "sort_order");
-  return [...videos].sort((a, b) => Number(b.is_featured) - Number(a.is_featured) || (a.sort_order || 0) - (b.sort_order || 0));
+  const supabase = getSupabasePublicClient();
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase.from("streaming_videos").select("*").eq("status", "published").order("sort_order", { ascending: true }).order("created_at", { ascending: false });
+    if (error || !data) return [];
+    const videos = data as StreamingVideo[];
+    return [...videos].sort((a, b) => Number(b.is_featured) - Number(a.is_featured) || (a.sort_order || 0) - (b.sort_order || 0));
+  } catch {
+    return [];
+  }
 }
 
 export async function getPublishedCompanions() {
-  const companions = await listFromSupabase<CompanionProfile>("companions", fallbackCompanions.filter((item) => item.status === "published"), false, "sort_order");
-  return [...companions].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const supabase = getSupabasePublicClient();
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase.from("companions").select("*").eq("status", "published").order("sort_order", { ascending: true }).order("created_at", { ascending: false });
+    if (error || !data) return [];
+    const companions = data as CompanionProfile[];
+    return [...companions].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  } catch {
+    return [];
+  }
 }
