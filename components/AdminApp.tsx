@@ -95,6 +95,9 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
         console.log(`[CMS Admin Load Response (${api.status})]:`, body);
         if (api.ok && body.store) {
           setStore(body.store);
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("qonsulin_local_cms_store");
+          }
           return;
         }
       }
@@ -391,7 +394,59 @@ function CmsForm({ section, row, loading, onCancel, onSubmit }: { section: Exclu
 }
 
 function Settings({ loading, onRefresh }: { loading: boolean; onRefresh: () => void }) {
-  return <div className="settings-stack"><div className="admin-title"><div><h1>Status Sistem & Sinkronisasi Website</h1><p>Pantau status sambungan data dan segarkan tampilan website publik.</p></div></div><div className="admin-grid"><article className="admin-card"><h3>Sambungan Penyimpanan Data</h3><p>Status Sambungan: <strong>{hasSupabaseEnv() ? "Terhubung Online" : "Mode Penyimpanan Lokal"}</strong></p><p>Seluruh artikel, ulasan, dan galeri yang Anda kelola akan otomatis terpublikasi ke website utama.</p></article><article className="admin-card"><h3>Keamanan Akun Pengelola</h3><p>Akses masuk khusus staf administrasi resmi Qonsulin.id yang terdaftar.</p><p>Gunakan tombol Log Out di bilah navigasi kiri jika telah selesai mengelola konten.</p></article></div><article className="admin-card"><h3>Privasi & Keamanan Konten</h3><p>Halaman pengelola ini bersifat rahasia dan terlindungi dari pencarian umum. Hanya konten dengan status <strong>Terbit</strong> yang akan tayang di website publik.</p></article><article className="admin-card"><h3>Segarkan Data Website</h3><p>Gunakan tombol di bawah untuk memuat ulang data konten terbaru di halaman pengelola ini.</p><button className="btn btn-primary" disabled={loading} onClick={onRefresh}><RefreshCw size={15} />{loading ? "Memuat..." : "Segarkan Data Konten"}</button></article><article className="admin-card"><h3>Daftar Modul Konten Tersedia</h3><div className="table-checks">{["Artikel & Blog", "Aktivitas Komunitas", "Ulasan Klien", "Ebook Edukasi", "Dokumentasi Galeri", "Tayangan Video", "Profil Pendamping"].map((table) => <code key={table}>{table}</code>)}</div></article></div>;
+  const [clearedNotice, setClearedNotice] = useState(false);
+
+  const handleClearCacheAndSync = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("qonsulin_local_cms_store");
+    }
+    setClearedNotice(true);
+    setTimeout(() => setClearedNotice(false), 4000);
+    onRefresh();
+  };
+
+  return (
+    <div className="settings-stack">
+      <div className="admin-title">
+        <div>
+          <h1>Status Sistem & Sinkronisasi Website</h1>
+          <p>Pantau status sambungan data dan segarkan tampilan website publik.</p>
+        </div>
+      </div>
+      <div className="admin-grid">
+        <article className="admin-card">
+          <h3>Sambungan Penyimpanan Data</h3>
+          <p>Status Sambungan: <strong>{hasSupabaseEnv() ? "Terhubung Online (Supabase Database)" : "Mode Penyimpanan Lokal"}</strong></p>
+          <p>Seluruh artikel, ulasan, dan galeri yang Anda kelola akan otomatis terpublikasi ke website utama.</p>
+        </article>
+        <article className="admin-card">
+          <h3>Keamanan Akun Pengelola</h3>
+          <p>Akses masuk khusus staf administrasi resmi Qonsulin.id yang terdaftar.</p>
+          <p>Gunakan tombol Log Out di bilah navigasi kiri jika telah selesai mengelola konten.</p>
+        </article>
+      </div>
+      <article className="admin-card">
+        <h3>Privasi & Keamanan Konten</h3>
+        <p>Halaman pengelola ini bersifat rahasia dan terlindungi dari pencarian umum. Hanya konten dengan status <strong>Terbit</strong> yang akan tayang di website publik.</p>
+      </article>
+      <article className="admin-card">
+        <h3>Segarkan Data & Bersihkan Cache Lokal</h3>
+        <p>Jika Anda melihat data berbeda antara dashboard admin dan website utama, gunakan tombol di bawah untuk membersihkan cache offline browser dan memuat ulang data terbaru langsung dari server database.</p>
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap", marginTop: "0.75rem" }}>
+          <button className="btn btn-primary" disabled={loading} onClick={handleClearCacheAndSync}>
+            <RefreshCw size={15} />{loading ? "Memuat..." : "Bersihkan Cache & Sinkronkan Ulang"}
+          </button>
+          {clearedNotice && <span style={{ color: "var(--admin-emerald, #10b981)", fontWeight: 500, fontSize: "0.875rem" }}>✓ Cache browser berhasil dibersihkan & data dimuat ulang!</span>}
+        </div>
+      </article>
+      <article className="admin-card">
+        <h3>Daftar Modul Konten Tersedia</h3>
+        <div className="table-checks">
+          {["Artikel & Blog", "Aktivitas Komunitas", "Ulasan Klien", "Ebook Edukasi", "Dokumentasi Galeri", "Tayangan Video", "Profil Pendamping"].map((table) => <code key={table}>{table}</code>)}
+        </div>
+      </article>
+    </div>
+  );
 }
 
 function Field({ label, children, wide = false }: { label: string; children: React.ReactNode; wide?: boolean }) {
