@@ -151,7 +151,7 @@ function formatArticleDate(value: string | null) {
   if (!value) return "QONSULIN.ID";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "QONSULIN.ID";
-  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(date);
 }
 
 function StudentPage({ posts }: { posts: BlogPost[] }) {

@@ -36,7 +36,21 @@ async function listFromSupabase<T>(table: string, fallback: T[] = [], includeDra
 }
 
 export async function getPublishedPosts() {
-  return listFromSupabase<BlogPost>("blog_posts", []);
+  const supabase = getSupabasePublicClient();
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from("blog_posts")
+      .select("*")
+      .eq("status", "published")
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
+    if (error || !data) return [];
+    return data as BlogPost[];
+  } catch {
+    return [];
+  }
 }
 
 export async function getPostBySlug(slug: string) {

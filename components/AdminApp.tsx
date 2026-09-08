@@ -131,15 +131,16 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
     setLoading(true);
     setMessage("");
     const now = new Date().toISOString();
-    const normalized = normalizePayload(sectionId, payload, now);
+    const isUpdate = Boolean(id);
+    const normalized = normalizePayload(sectionId, payload, now, isUpdate);
 
     try {
-      console.log(`[CMS Admin] Menyimpan ke database ${sectionId}:`, { id, payload });
+      console.log(`[CMS Admin] Menyimpan ke database ${sectionId}:`, { id, payload: normalized });
 
       const api = await fetch("/api/admin/cms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section: sectionId, id, payload })
+        body: JSON.stringify({ section: sectionId, id, payload: normalized })
       }).catch((fetchErr) => {
         console.error("[CMS Admin Network Error]:", fetchErr);
         return null;
@@ -491,6 +492,13 @@ function renderInput(field: FieldDef, value: string | boolean | undefined, setVa
   return <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "datetime-local" ? "datetime-local" : field.type === "url" ? "url" : "text"} required={field.required} value={String(value || "")} onChange={(event) => setValue(event.target.value)} />;
 }
 
+function formatAdminDate(value?: string | null) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "-";
+  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(d);
+}
+
 function formConfig(section: Exclude<Section, "dashboard" | "settings">) {
   const commonStatus: FieldDef = { name: "status", label: "Status Publikasi", type: "select", options: [["draft", "Draft"], ["published", "Published"], ["archived", "Archived"]] };
   const configs = {
@@ -508,7 +516,7 @@ function formConfig(section: Exclude<Section, "dashboard" | "settings">) {
 function collectionConfig(section: Exclude<Section, "dashboard" | "settings">) {
   const statusCell = (status: CmsStatus) => <td><span className={`status ${status}`}>{status}</span></td>;
   const configs = {
-    posts: { title: "Manajemen Artikel & Blog", subtitle: "Koleksi tulisan edukasi kesehatan mental dan bacaan kawan cerita.", button: "Tulis Artikel Baru", columns: ["Judul Artikel", "Kategori", "Tautan Web", "Status"], render: (row: AnyRow) => { const post = row as BlogPost; return <><td><strong>{post.title}</strong></td><td>{post.category}</td><td>/{post.slug}</td>{statusCell(post.status)}</>; } },
+    posts: { title: "Manajemen Artikel & Blog", subtitle: "Koleksi tulisan edukasi kesehatan mental dan bacaan kawan cerita.", button: "Tulis Artikel Baru", columns: ["Judul Artikel", "Kategori", "Tanggal Terbit", "Tautan Web", "Status"], render: (row: AnyRow) => { const post = row as BlogPost; return <><td><strong>{post.title}</strong></td><td>{post.category}</td><td>{formatAdminDate(post.published_at || post.created_at)}</td><td>/{post.slug}</td>{statusCell(post.status)}</>; } },
     activities: { title: "Aktivitas & Kegiatan Komunitas", subtitle: "Daftar agenda seminar, program edukasi mahasiswa, dan kampanye digital.", button: "Tambah Aktivitas", columns: ["Judul Kegiatan", "Kategori", "Tanggal", "Status"], render: (row: AnyRow) => { const item = row as ActivityItem; return <><td><strong>{item.title}</strong></td><td>{item.type}</td><td>{item.date || "-"}</td>{statusCell(item.status)}</>; } },
     testimonials: { title: "Ulasan & Testimoni", subtitle: "Daftar testimoni aman yang dipublikasikan.", button: "Tambah Testimoni", columns: ["Nama Samaran", "Kategori", "Kutipan", "Status"], render: (row: AnyRow) => { const item = row as Testimonial; return <><td><strong>{item.persona}</strong></td><td>{item.context || "-"}</td><td>{item.quote.slice(0, 64)}...</td>{statusCell(item.status)}</>; } },
     "lead-magnets": { title: "Ebook & Panduan Edukasi", subtitle: "Panduan dan checklist gratis untuk pembaca website.", button: "Tambah Ebook", columns: ["Judul", "Tombol", "Berkas", "Status"], render: (row: AnyRow) => { const item = row as LeadMagnet; return <><td><strong>{item.title}</strong></td><td>{item.cta_label}</td><td>{item.file_url ? "Tersedia" : "-"}</td>{statusCell(item.status)}</>; } },
@@ -555,9 +563,11 @@ function splitList(value: string, multilineOnly = false) {
     .filter(Boolean);
 }
 
-function normalizePayload(section: Exclude<Section, "dashboard" | "settings">, payload: Record<string, unknown>, now: string) {
+function normalizePayload(section: Exclude<Section, "dashboard" | "settings">, payload: Record<string, unknown>, now: string, isUpdate = false) {
   const normalized: Record<string, unknown> = { ...payload, updated_at: now };
-  if (section === "posts" && normalized.status === "published" && !normalized.published_at) normalized.published_at = now;
+  if (!isUpdate && section === "posts" && normalized.status === "published" && !normalized.published_at) {
+    normalized.published_at = now;
+  }
   return normalized;
 }
 

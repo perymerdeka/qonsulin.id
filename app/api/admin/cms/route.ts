@@ -38,7 +38,7 @@ function splitList(value: string, multilineOnly = false) {
     .filter(Boolean);
 }
 
-function normalizePayload(section: CmsSection, payload: Record<string, unknown>) {
+function normalizePayload(section: CmsSection, payload: Record<string, unknown>, isUpdate = false) {
   const normalized: Record<string, unknown> = { ...payload };
 
   if ("tags" in normalized && typeof normalized.tags === "string") {
@@ -55,11 +55,19 @@ function normalizePayload(section: CmsSection, payload: Record<string, unknown>)
   if ((section === "posts" || section === "galleries" || section === "streaming") && !normalized.slug && normalized.title) {
     normalized.slug = slugify(String(normalized.title));
   }
-  if (section === "posts" && normalized.status === "published" && !normalized.published_at) {
+  if ("published_at" in normalized) {
+    if (!normalized.published_at) {
+      normalized.published_at = null;
+    } else {
+      const parsed = new Date(String(normalized.published_at));
+      if (!Number.isNaN(parsed.getTime())) {
+        normalized.published_at = parsed.toISOString();
+      }
+    }
+  } else if (!isUpdate && section === "posts" && normalized.status === "published") {
     normalized.published_at = new Date().toISOString();
   }
   if ("live_at" in normalized && normalized.live_at === "") normalized.live_at = null;
-  if ("published_at" in normalized && normalized.published_at === "") normalized.published_at = null;
   if ("event_date" in normalized && normalized.event_date === "") normalized.event_date = null;
 
   return normalized;
@@ -76,7 +84,7 @@ export async function GET(request: NextRequest) {
   }
 
   let [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes] = await Promise.all([
-    supabase.from("blog_posts").select("*").order("created_at", { ascending: false }),
+    supabase.from("blog_posts").select("*").order("published_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }),
     supabase.from("activities").select("*").order("created_at", { ascending: false }),
     supabase.from("testimonials").select("*").order("created_at", { ascending: false }),
     supabase.from("lead_magnets").select("*").order("created_at", { ascending: false }),
@@ -91,7 +99,7 @@ export async function GET(request: NextRequest) {
     console.warn("[CMS Admin GET] Service role key tidak valid di server hosting, memulihkan data dengan public client Supabase...");
     supabase = publicClient;
     [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes] = await Promise.all([
-      supabase.from("blog_posts").select("*").order("created_at", { ascending: false }),
+      supabase.from("blog_posts").select("*").order("published_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }),
       supabase.from("activities").select("*").order("created_at", { ascending: false }),
       supabase.from("testimonials").select("*").order("created_at", { ascending: false }),
       supabase.from("lead_magnets").select("*").order("created_at", { ascending: false }),
@@ -156,10 +164,10 @@ export async function POST(request: NextRequest) {
   }
 
   const table = tableBySection[section];
-  const normalized = normalizePayload(section, body.payload as Record<string, unknown>);
-  const cleanPayload = filterPayload(section, normalized);
   const rawId = typeof body.id === "string" && body.id ? body.id : null;
   const isRealUuid = isValidUuid(rawId);
+  const normalized = normalizePayload(section, body.payload as Record<string, unknown>, isRealUuid);
+  const cleanPayload = filterPayload(section, normalized);
 
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();
