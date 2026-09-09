@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fallbackActivities, fallbackCompanions, fallbackGalleryEvents, fallbackLeadMagnets, fallbackPosts, fallbackStreamingVideos, fallbackTestimonials, type Store, type AnyRow, type BlogPost, type GalleryEvent } from "@/lib/cms-fallback";
 import { getSupabasePublicClient } from "@/lib/supabase";
+import { getSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
 const STORE_PATH = path.join(process.cwd(), "data", "local-cms-store.json");
 
@@ -102,7 +103,10 @@ export function deleteLocalCmsRow(section: keyof Store, id: string): boolean {
 }
 
 export async function getPostBySlugServer(slug: string): Promise<BlogPost | null> {
-  const supabase = getSupabasePublicClient();
+  const adminClient = getSupabaseAdminClient();
+  const publicClient = getSupabasePublicClient();
+  const supabase = (adminClient || publicClient) as any;
+
   if (supabase) {
     try {
       const { data, error } = await supabase.from("blog_posts").select("*").eq("slug", slug).maybeSingle();

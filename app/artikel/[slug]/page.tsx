@@ -12,6 +12,9 @@ function formatArticleDate(value: string | null) {
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(date);
 }
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type PageProps = { params: Promise<{ slug: string }> };
 
 export default async function ArticleDetailPage({ params }: PageProps) {

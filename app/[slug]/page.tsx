@@ -4,6 +4,9 @@ import { Footer, Header } from "@/components/PublicChrome";
 import { faq, services, supportTiers, whatsappUrl } from "@/lib/data";
 import { getPublishedActivities, getPublishedGalleryEvents, getPublishedPosts, getPublishedStreamingVideos, plainExcerpt, type ActivityItem, type BlogPost, type GalleryEvent, type StreamingVideo } from "@/lib/cms";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type PageProps = { params: Promise<{ slug: string }> };
 
 const pageCopy: Record<string, { eyebrow: string; title: string; body: string }> = {

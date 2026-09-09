@@ -5,6 +5,9 @@ import { getGalleryMedia } from "@/lib/cms";
 import { getGalleryEventBySlugServer } from "@/lib/server/local-cms-store";
 import { whatsappUrl } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type PageProps = { params: Promise<{ slug: string }> };
 
 export default async function GalleryDetailPage({ params }: PageProps) {
