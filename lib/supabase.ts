@@ -1,11 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 
+declare global {
+  interface Window {
+    __QONSULIN_PUBLIC_CONFIG__?: {
+      supabaseUrl: string;
+      supabasePublishableKey: string;
+    };
+  }
+}
+
 function cleanEnv(value?: string) {
   return value?.trim().replace(/^['"]|['"]$/g, "").replace(/\/+$/, "") || "";
 }
 
 function getSupabaseUrl() {
-  const publicUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const publicUrl = cleanEnv(
+    typeof window === "undefined"
+      ? process.env.NEXT_PUBLIC_SUPABASE_URL
+      : window.__QONSULIN_PUBLIC_CONFIG__?.supabaseUrl || process.env.NEXT_PUBLIC_SUPABASE_URL
+  );
   const serverUrl = cleanEnv(process.env.SUPABASE_URL);
 
   // Browsers use localhost; Docker server code uses host.docker.internal.
@@ -14,6 +27,7 @@ function getSupabaseUrl() {
 
 function getSupabasePublishableKey() {
   return (
+    (typeof window !== "undefined" && window.__QONSULIN_PUBLIC_CONFIG__?.supabasePublishableKey) ||
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_KEY ||

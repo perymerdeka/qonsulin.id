@@ -12,10 +12,26 @@ export const metadata: Metadata = {
   icons: { icon: "/qonsulin-logo.png", apple: "/qonsulin-logo.png" }
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const readRuntimeEnv = (name: string) => process.env[name]?.trim().replace(/^['"]|['"]$/g, "") || "";
+  const publicConfig = {
+    supabaseUrl: readRuntimeEnv("NEXT_PUBLIC_SUPABASE_URL"),
+    supabasePublishableKey: readRuntimeEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") ||
+      readRuntimeEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY") ||
+      readRuntimeEnv("NEXT_PUBLIC_SUPABASE_KEY")
+  };
+  const serializedConfig = JSON.stringify(publicConfig).replace(/[<>&\u2028\u2029]/g, (character) =>
+    `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`
+  );
+
   return (
     <html lang="id" className={`${inter.variable} ${outfit.variable}`}>
-      <body>{children}</body>
+      <body>
+        <script dangerouslySetInnerHTML={{ __html: `window.__QONSULIN_PUBLIC_CONFIG__=${serializedConfig};` }} />
+        {children}
+      </body>
     </html>
   );
 }
