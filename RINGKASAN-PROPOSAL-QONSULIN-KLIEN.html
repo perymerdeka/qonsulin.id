@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Ringkasan Rencana Pengembangan Qonsulin.id</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #1e293b; font-size: 9.5pt; line-height: 1.5; }
+  
+  .header { border-bottom: 3px solid #0d9488; padding-bottom: 12pt; margin-bottom: 16pt; }
+  .badge { display: inline-block; background: #ccfbf1; color: #0f766e; font-size: 8pt; font-weight: 700; padding: 2pt 8pt; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6pt; }
+  h1 { font-size: 20pt; color: #0f766e; margin: 0 0 4pt; font-weight: 800; }
+  .subtitle { color: #64748b; font-size: 10pt; margin: 0; }
+
+  .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8pt; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6pt; padding: 8pt 12pt; margin-bottom: 16pt; }
+  .meta-item small { display: block; color: #64748b; font-size: 7.5pt; text-transform: uppercase; }
+  .meta-item strong { color: #0f766e; font-size: 9pt; }
+
+  h2 { font-size: 13pt; color: #0f766e; margin: 16pt 0 8pt; border-left: 3px solid #0d9488; padding-left: 6pt; break-after: avoid; }
+  h3 { font-size: 10.5pt; color: #1e293b; margin: 10pt 0 4pt; break-after: avoid; }
+  p { margin: 0 0 6pt; }
+  ul { margin: 2pt 0 8pt 16pt; padding: 0; }
+  li { margin-bottom: 2pt; }
+
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; margin-bottom: 10pt; }
+  .card { border: 1px solid #e2e8f0; border-radius: 6pt; padding: 8pt 10pt; background: #ffffff; break-inside: avoid; }
+  .card-title { font-weight: 700; color: #0f766e; margin-bottom: 4pt; font-size: 10pt; display: flex; align-items: center; gap: 4pt; }
+  .card p { font-size: 8.5pt; color: #475569; margin: 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 8pt 0 12pt; font-size: 8.5pt; break-inside: avoid; }
+  th { background: #0f766e; color: white; text-align: left; padding: 5pt 7pt; font-weight: 600; }
+  td { border: 1px solid #cbd5e1; padding: 5pt 7pt; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+
+  .callout { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 6pt; padding: 8pt 12pt; margin: 8pt 0 12pt; break-inside: avoid; }
+  .callout-title { font-weight: 700; color: #0f766e; font-size: 9pt; margin-bottom: 2pt; }
+  .callout p { margin: 0; font-size: 8.5pt; color: #134e4a; }
+
+  .page-break { page-break-after: always; }
+  .footer { margin-top: 16pt; padding-top: 8pt; border-top: 1px solid #e2e8f0; font-size: 8pt; color: #94a3b8; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="badge">Rencana Pengembangan Produk (Client Review)</span>
+  <h1>QONSULIN.ID — Ruang Member & Surat Anonim</h1>
+  <p class="subtitle">A Safe Place to Write, Connect, and Heal • Roadmap MVP 25 Hari Kerja</p>
+</div>
+
+<div class="meta-grid">
+  <div class="meta-item"><small>Target Rilis</small><strong>MVP Beta (25 Hari)</strong></div>
+  <div class="meta-item"><small>Model Bisnis</small><strong>Freemium + WhatsApp</strong></div>
+  <div class="meta-item"><small>Fokus Utama</small><strong>Surat Anonim & Empati</strong></div>
+  <div class="meta-item"><small>Status Dokumen</small><strong>Siap Review Klien</strong></div>
+</div>
+
+<h2>1. Visi & Positioning Produk</h2>
+<p>Fitur baru ini bukan media sosial biasa dan bukan aplikasi cari jodoh. Qonsulin hadir sebagai <strong>ruang aman bercerita dan meluapkan beban pikiran tanpa stigma</strong>.</p>
+<ul>
+  <li><strong>Empati Murni:</strong> Tidak ada likes, follower, ranking popularitas, atau persaingan interaksi.</li>
+  <li><strong>Privasi Terjaga:</strong> Identitas asli (nama, email, no HP) tidak pernah ditampilkan ke pengguna lain. Pengguna hanya dikenal melalui nama samaran (alias) dan avatar ramah emosi.</li>
+  <li><strong>Etika & Batasan Jelas:</strong> Layanan ini ditujukan untuk usia 18+, bukan pengganti terapi medis atau psikolog klinis, dan bukan layanan gawat darurat.</li>
+</ul>
+
+<h2>2. Empat Fitur Utama yang Dikembangkan</h2>
+
+<div class="card-grid">
+  <div class="card">
+    <div class="card-title">1. Akun Member & Avatar Profil</div>
+    <p>Pengguna dapat membuat akun, mengatur nama samaran (alias), dan memilih avatar karakter yang hangat dan tenang. Data sensitif tersimpan aman dan terpisah dari profil publik.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">2. Paket Member & Harga Konsultasi</div>
+    <p>Pengaturan paket konsultasi dan tingkatan member (Free vs Premium). Pengguna dapat melihat daftar harga transparan dan melakukan konfirmasi pemesanan via WhatsApp Admin.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">3. Kolam Surat Anonim (Letter Pool)</div>
+    <p>Pengguna menulis surat katarsis secara anonim. Surat yang lolos kurasi tayang di kolam bersama agar bisa dibalas oleh pengguna lain secara aman dengan animasi amplop ala <em>chithi.me</em>.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">4. Panel Pengelola (CMS) Terpadu</div>
+    <p>Admin Qonsulin memiliki dashboard mudah untuk memoderasi surat masuk, menangani laporan, mengelola harga paket layanan, serta menghubungkan surat ke profil mentor/psikolog.</p>
+  </div>
+</div>
+
+<h2>3. Alur Berbalas Surat Anonim (User Journey)</h2>
+<div class="callout">
+  <div class="callout-title">Prinsip Pengalaman: Tenang, Reflektif, dan Terapeutik</div>
+  <p>Proses menulis dirancang melambat (slow intentional writing) agar pengguna merasa didengar dan rileks.</p>
+</div>
+<ol>
+  <li><strong>Tulis Surat:</strong> Member memilih tema kertas, menuangkan unek-unek, dan menyertakan mood (misal: <em>Stres Kuliah, Overthinking</em>).</li>
+  <li><strong>Animasi Melipat & Mengirim:</strong> Surat terlipat rapi, masuk ke dalam amplop, dan diberi cap lilin virtual sebelum dikirim.</li>
+  <li><strong>Penyaringan Aman (Moderasi):</strong> Surat ditinjau oleh tim admin agar bebas dari kata kasar, pelecehan, atau nomor kontak pribadi sebelum tampil ke publik.</li>
+  <li><strong>Tampil di Kolam Surat:</strong> Surat anonim muncul di feed umum tanpa nama asli. Member lain yang berempati dapat memilih untuk membaca dan menulis balasan suportif.</li>
+  <li><strong>Ruang Balasan Privat (Thread):</strong> Balasan terkirim ke kotak masuk pengirim asli. Kedua pihak bisa berbalas surat dalam ruang tertutup dengan tombol blokir atau laporkan jika merasa tidak nyaman.</li>
+</ol>
+
+<div class="page-break"></div>
+
+<h2>4. Tiga Jalur Dukungan (Label Transparan)</h2>
+<p>Setiap surat dan balasan wajib memiliki label asal yang jelas agar pengguna tidak salah paham:</p>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 28%;">Label Dukungan</th>
+      <th style="width: 42%;">Arti bagi Pengguna</th>
+      <th style="width: 30%;">Status di Versi MVP</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>💌 Community Support</strong></td>
+      <td>Balasan saling menguatkan dari sesama pengguna di Kolam Surat. Bukan nasihat klinis.</td>
+      <td><strong>Aktif</strong> (Fitur Utama)</td>
+    </tr>
+    <tr>
+      <td><strong>🧠 Professional Support</strong></td>
+      <td>Respons langsung atau rujukan sesi dari psikolog / konselor mitra resmi Qonsulin.</td>
+      <td><strong>Aktif</strong> (Via Paket Layanan)</td>
+    </tr>
+    <tr>
+      <td><strong>🤝 Volunteer Support</strong></td>
+      <td>Dukungan dari relawan komunitas yang telah melalui pelatihan khusus pendampingan.</td>
+      <td><em>Ditunda</em> (Fase Berikutnya)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>5. Pilihan Paket & Monetisasi Sederhana (Freemium)</h2>
+<p>Untuk rilis awal, sistem menggunakan pembayaran transfer manual dan konfirmasi ke WhatsApp Admin agar hemat biaya dan cepat divalidasi ke pengguna:</p>
+<table>
+  <thead>
+    <tr>
+      <th>Paket / Layanan</th>
+      <th>Biaya</th>
+      <th>Fasilitas yang Didapat Pengguna</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Member Gratis (Free)</strong></td>
+      <td><strong>Rp0</strong></td>
+      <td>
+        • Menulis 3 surat baru per bulan ke Kolam Surat.<br>
+        • Membalas surat pengguna lain tanpa batasan ketat.<br>
+        • Mengakses tema kertas standar.
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Member Premium</strong></td>
+      <td><strong>Rp19.000</strong> <small>/ bln</small></td>
+      <td>
+        • Kuota kirim surat lebih leluasa.<br>
+        • Akses seluruh tema kertas & amplop eksklusif (estetik).<br>
+        • Fitur simpan dan koleksi surat favorit.
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Sesi Konsultasi 1-on-1</strong></td>
+      <td><em>Sesuai Tarif Mitra</em></td>
+      <td>
+        • Konsultasi privat dengan Peer Counselor atau Psikolog Klinis.<br>
+        • Terhubung langsung dari tombol rujukan di web.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>6. Garansi Keamanan & Perlindungan Pengguna</h2>
+<ul>
+  <li><strong>Penyaringan Kata Kritis (Crisis Alert):</strong> Jika surat mengindikasikan risiko berbahaya/kondisi darurat, sistem otomatis menahan surat dari publik dan menampilkan kontak hotline bantuan resmi.</li>
+  <li><strong>Anti-Spam & Tombol Lapor:</strong> Pengguna dapat memblokir lawan surat atau melaporkan konten yang tidak pantas dengan 1 klik.</li>
+  <li><strong>Tanpa Data Finansial Rumit:</strong> Pembayaran manual memastikan tidak ada data kartu kredit pengguna yang disimpan di website.</li>
+</ul>
+
+<h2>7. Roadmap Pengerjaan 25 Hari Kerja</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 20%;">Tahapan</th>
+      <th style="width: 15%;">Waktu</th>
+      <th style="width: 65%;">Hasil yang Diserahkan</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Minggu 1</strong></td>
+      <td>Hari 1 – 5</td>
+      <td>Penyelarasan desain, pembuatan sistem akun member, profil nama samaran, dan avatar karakter.</td>
+    </tr>
+    <tr>
+      <td><strong>Minggu 2</strong></td>
+      <td>Hari 6 – 10</td>
+      <td>Pengaturan paket harga di CMS admin, katalog tarif layanan di website, dan alur pemesanan via WhatsApp.</td>
+    </tr>
+    <tr>
+      <td><strong>Minggu 3</strong></td>
+      <td>Hari 11 – 15</td>
+      <td>Fitur tulis surat, animasi amplop lipat, antrean moderasi admin, dan tampilan Kolam Surat anonim.</td>
+    </tr>
+    <tr>
+      <td><strong>Minggu 4</strong></td>
+      <td>Hari 16 – 20</td>
+      <td>Fitur berbalas surat (thread privat), tombol lapor/blokir, dan integrasi tombol rujukan ke konselor.</td>
+    </tr>
+    <tr>
+      <td><strong>Minggu 5</strong></td>
+      <td>Hari 21 – 25</td>
+      <td>Uji coba menyeluruh di HP & laptop, pelatihan admin moderasi, dan peluncuran versi Beta terbatas.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>8. Hal yang Perlu Dikonfirmasi oleh Klien</h2>
+<ol>
+  <li><strong>Nomor WhatsApp Admin & Rekening Pembayaran:</strong> Untuk penerimaan konfirmasi paket Premium.</li>
+  <li><strong>Tarif Akhir Paket Premium:</strong> Konfirmasi apakah menggunakan Rp19.000/bulan atau ada penyesuaian.</li>
+  <li><strong>Jam Operasional Moderasi Surat:</strong> Menentukan jam aktif tim admin dalam menyetujui surat masuk setiap harinya.</li>
+</ol>
+
+<div class="footer">
+  Dokumen Ringkasan Eksekutif • Disusun untuk Tinjauan Klien Qonsulin.id • November 2026
+</div>
+
+</body>
+</html>

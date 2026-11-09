@@ -3,6 +3,8 @@ import { AlertTriangle, ArrowRight, BookOpenText, CalendarDays, CheckCircle2, He
 import { Footer, Header } from "@/components/PublicChrome";
 import { faq, services, supportTiers, whatsappUrl } from "@/lib/data";
 import { getPublishedActivities, getPublishedGalleryEvents, getPublishedPosts, getPublishedStreamingVideos, plainExcerpt, type ActivityItem, type BlogPost, type GalleryEvent, type StreamingVideo } from "@/lib/cms";
+import { getActivePackages, formatRupiah, type ConsultationPackage } from "@/lib/packages";
+import { PackageOrderButton } from "@/components/PackageOrderButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,6 +13,7 @@ type PageProps = { params: Promise<{ slug: string }> };
 
 const pageCopy: Record<string, { eyebrow: string; title: string; body: string }> = {
   layanan: { eyebrow: "Layanan Resmi Terintegrasi", title: "Pusat Layanan Pendampingan Mental Wellness", body: "Menyediakan ruang berekspresi jujur bebas dari stigma, terstruktur khusus untuk kebutuhan hidup mahasiswa, profesional muda, dan keluarga." },
+  harga: { eyebrow: "Tarif & Paket Transparan", title: "Katalog Paket & Membership QONSULIN.ID", body: "Pilih paket ruang katarsis surat batin atau pendampingan konseling 1-on-1 yang paling sesuai dengan kebutuhanmu." },
   konsultan: { eyebrow: "Kredibilitas Tim Pendamping", title: "Transparansi Kompetensi Teman Cerita & Konselor", body: "Menyelaraskan tingkat kedalaman krisis emosionalmu dengan keahlian yang tepat guna menjaga standar perlindungan yang aman, murah, dan humanis." },
   artikel: { eyebrow: "Edukasi Mental Wellness", title: "Katalog Artikel & Blog", body: "Koleksi tulisan penunjang SEO dan edukasi kawan cerita dengan bahasa ringan, aman, dan tidak mengklaim diagnosis klinis." },
   faq: { eyebrow: "Bantuan", title: "Pertanyaan yang Sering Diajukan", body: "Jawaban singkat tentang cara mulai berkonsultasi, batas layanan, dan bagaimana QONSULIN.ID menjaga privasi cerita." },
@@ -32,12 +35,13 @@ export default async function PublicSubPage({ params }: PageProps) {
   const activities = slug === "kegiatan" ? await getPublishedActivities() : [];
   const galleries = slug === "galeri" ? await getPublishedGalleryEvents() : [];
   const streaming = slug === "streaming" ? await getPublishedStreamingVideos() : [];
+  const packages = slug === "layanan" || slug === "harga" ? await getActivePackages() : [];
 
   return (
     <main className="site-shell">
       <Header active={getActivePath(slug)} />
       <section className="page-hero container"><span className="tag">{copy.eyebrow}</span><h1>{copy.title}</h1><p>{copy.body}</p></section>
-      {slug === "layanan" && <ServicesPage />}
+      {(slug === "layanan" || slug === "harga") && <ServicesPage packages={packages} />}
       {slug === "konsultan" && <ConsultantPage />}
       {slug === "artikel" && <ArticlePage posts={posts} />}
       {slug === "faq" && <FaqPage />}
@@ -56,12 +60,12 @@ export default async function PublicSubPage({ params }: PageProps) {
 function getActivePath(slug: string) {
   if (slug === "artikel" || slug === "galeri" || slug === "streaming" || slug === "kegiatan") return "/artikel";
   if (slug === "faq") return "/faq";
-  if (slug === "layanan" || slug === "konsultan" || slug === "asesmen" || slug === "mahasiswa") return "/layanan";
+  if (slug === "layanan" || slug === "harga" || slug === "konsultan" || slug === "asesmen" || slug === "mahasiswa") return "/layanan";
   if (slug === "kontak") return "/kontak";
   return "/tentang-kami";
 }
 
-function ServicesPage() {
+function ServicesPage({ packages = [] }: { packages?: ConsultationPackage[] }) {
   const assessmentOptions = [
     ["Active Listener / Teman Dengar", "Tepat untuk melepaskan penat atau sementara, bad day harian, overthinking skripsi biasa, kebingungan karir ringan, atau sekadar butuh telinga netral untuk meluapkan emosi tanpa perlu kesimpulan penanganan medis."],
     ["Psikolog Klinis Profesional", "Diharuskan apabila ada indikasi kecenderungan membahayakan diri sendiri, keputusan mental berat berbulan-bulan yang mengganggu fungsi produktif dasar, delusi kronis, trauma masa lalu yang melumpuhkan, atau kecemasan medis akut."]
@@ -74,6 +78,103 @@ function ServicesPage() {
 
   return (
     <>
+      {/* Dynamic Pricing Catalog Section */}
+      <section className="section" id="tarif-paket" style={{ background: "var(--color-surface-muted)", padding: "3.5rem 0", borderBottom: "1px solid var(--color-rule)" }}>
+        <div className="container">
+          <div className="section-head center">
+            <span className="tag">Tarif & Tier Transparan</span>
+            <h2>Pilihan Paket Sesuai Kebutuhan Jiwamu</h2>
+            <p>Mulai dari ruang katarsis surat batin anonim gratis hingga pendampingan profesional bersama psikolog berwenang.</p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.5rem", marginTop: "2rem" }}>
+            {packages.map((pkg) => {
+              const isFree = pkg.price === 0;
+              const isPremium = pkg.code === "member_premium";
+
+              return (
+                <article
+                  key={pkg.id || pkg.code}
+                  className="card"
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    padding: "1.75rem",
+                    position: "relative",
+                    border: isPremium ? "2px solid var(--color-brand)" : undefined,
+                    boxShadow: isPremium ? "0 10px 25px oklch(70.5% 0.191 48.5 / 0.15)" : undefined
+                  }}
+                >
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                      <span className="pill muted" style={{ fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 700 }}>
+                        {pkg.category === "membership" ? "Membership Surat" : "Konsultasi 1-on-1"}
+                      </span>
+                      {pkg.badge && (
+                        <span
+                          className="pill"
+                          style={{
+                            fontSize: "0.72rem",
+                            background: isPremium ? "#fef3c7" : "#e0f2fe",
+                            color: isPremium ? "#92400e" : "#0369a1",
+                            fontWeight: 800
+                          }}
+                        >
+                          {pkg.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 style={{ fontSize: "1.25rem", color: "var(--color-ink)", margin: "0.4rem 0" }}>{pkg.name}</h3>
+                    <p style={{ color: "var(--color-muted)", fontSize: "0.85rem", minHeight: "2.6rem", lineHeight: 1.5 }}>{pkg.description}</p>
+
+                    <div style={{ margin: "1.25rem 0 1rem" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
+                        <span style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--color-ink)" }}>
+                          {formatRupiah(pkg.price)}
+                        </span>
+                        {pkg.duration_days ? (
+                          <span style={{ color: "var(--color-muted)", fontSize: "0.82rem" }}>/{pkg.duration_days} hari</span>
+                        ) : null}
+                      </div>
+                      {pkg.original_price && pkg.original_price > pkg.price ? (
+                        <del style={{ color: "var(--color-muted)", fontSize: "0.8rem" }}>
+                          {formatRupiah(pkg.original_price)}
+                        </del>
+                      ) : null}
+                    </div>
+
+                    <ul style={{ listStyle: "none", padding: 0, margin: "1.25rem 0", display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+                      {pkg.features.map((feat, fIdx) => (
+                        <li key={fIdx} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", fontSize: "0.85rem", color: "var(--color-ink)", lineHeight: 1.45 }}>
+                          <CheckCircle2 size={15} style={{ color: "var(--color-brand)", flexShrink: 0, marginTop: 2 }} />
+                          <span>{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div style={{ marginTop: "1rem" }}>
+                    {isFree ? (
+                      <a href="/member/daftar" className="btn btn-white" style={{ width: "100%", justifyContent: "center" }}>
+                        Daftar Member Gratis
+                      </a>
+                    ) : (
+                      <PackageOrderButton pkg={pkg} premium={isPremium} />
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div style={{ textAlign: "center", marginTop: "1.75rem", color: "var(--color-muted)", fontSize: "0.8rem" }}>
+            * Konfirmasi pembayaran langsung ke WhatsApp Admin QONSULIN.ID dengan transfer bank manual.
+          </div>
+        </div>
+      </section>
+
       <section className="container service-directory">
         {services.map((service, index) => {
               const Icon = service.icon;

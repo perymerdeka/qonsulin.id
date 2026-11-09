@@ -1,0 +1,2 @@
+-- CMS sample rows are included in the baseline migration for local-only development.
+-- Add synthetic Sprint 1 member data here after member migrations are created.

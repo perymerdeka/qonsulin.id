@@ -13,7 +13,14 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "sync:live": "node scripts/sync-live-supabase.mjs",
-    "sync:live:push": "node scripts/sync-live-supabase.mjs --push"
+    "sync:live:push": "node scripts/sync-live-supabase.mjs --push",
+    "docker:up": "powershell -ExecutionPolicy Bypass -File ./scripts/start-docker.ps1",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f web",
+    "supabase:local:start": "supabase start",
+    "supabase:local:stop": "supabase stop",
+    "supabase:local:status": "supabase status",
+    "supabase:local:reset": "supabase db reset"
   },
   "dependencies": {
     "@mdxeditor/editor": "^4.0.4",
@@ -31,6 +38,7 @@
     "@types/react-dom": "^19.0.1",
     "eslint": "^9.16.0",
     "eslint-config-next": "^15.0.3",
+    "supabase": "^3.0.0",
     "typescript": "^5.7.2"
   }
 }

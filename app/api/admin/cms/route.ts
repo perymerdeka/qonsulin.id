@@ -3,7 +3,7 @@ import { adminCookieName, verifyAdminSessionValue } from "@/lib/server/admin-aut
 import { getSupabaseAdminClient } from "@/lib/server/supabase-admin";
 import { getSupabasePublicClient } from "@/lib/supabase";
 
-type CmsSection = "posts" | "activities" | "testimonials" | "lead-magnets" | "galleries" | "streaming" | "companions";
+type CmsSection = "posts" | "activities" | "testimonials" | "lead-magnets" | "galleries" | "streaming" | "companions" | "packages" | "members" | "orders" | "letters";
 
 const tableBySection: Record<CmsSection, string> = {
   posts: "blog_posts",
@@ -12,7 +12,11 @@ const tableBySection: Record<CmsSection, string> = {
   "lead-magnets": "lead_magnets",
   galleries: "gallery_events",
   streaming: "streaming_videos",
-  companions: "companions"
+  companions: "companions",
+  packages: "consultation_packages",
+  members: "member_profiles",
+  orders: "package_orders",
+  letters: "letters"
 };
 
 function authorized(request: NextRequest) {
@@ -67,6 +71,16 @@ function normalizePayload(section: CmsSection, payload: Record<string, unknown>,
   } else if (!isUpdate && section === "posts" && normalized.status === "published") {
     normalized.published_at = new Date().toISOString();
   }
+  if (section === "packages") {
+    if ("price" in normalized) normalized.price = Number(normalized.price || 0);
+    if ("original_price" in normalized) normalized.original_price = normalized.original_price !== "" && normalized.original_price !== null ? Number(normalized.original_price) : null;
+    if ("duration_days" in normalized) normalized.duration_days = normalized.duration_days !== "" && normalized.duration_days !== null ? Number(normalized.duration_days) : null;
+    if ("letter_quota" in normalized) normalized.letter_quota = normalized.letter_quota !== "" && normalized.letter_quota !== null ? Number(normalized.letter_quota) : null;
+    if ("is_active" in normalized) normalized.is_active = Boolean(normalized.is_active);
+    if ("features" in normalized && typeof normalized.features === "string") {
+      normalized.features = splitList(normalized.features, true);
+    }
+  }
   if ("live_at" in normalized && normalized.live_at === "") normalized.live_at = null;
   if ("event_date" in normalized && normalized.event_date === "") normalized.event_date = null;
 
@@ -78,19 +92,26 @@ export async function GET(request: NextRequest) {
 
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();
+  if (!adminClient) {
+    return NextResponse.json({ ok: false, message: "Kunci service role diperlukan untuk meninjau pesanan dan surat." }, { status: 500 });
+  }
   let supabase = (adminClient || publicClient) as any;
   if (!supabase) {
     return NextResponse.json({ ok: false, message: "Supabase client tidak tersedia. Periksa variabel environment Supabase." }, { status: 500 });
   }
 
-  let [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes] = await Promise.all([
+  let [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes, packagesRes, membersRes, ordersRes, lettersRes] = await Promise.all([
     supabase.from("blog_posts").select("*").order("published_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }),
     supabase.from("activities").select("*").order("created_at", { ascending: false }),
     supabase.from("testimonials").select("*").order("created_at", { ascending: false }),
     supabase.from("lead_magnets").select("*").order("created_at", { ascending: false }),
     supabase.from("gallery_events").select("*").order("created_at", { ascending: false }),
     supabase.from("streaming_videos").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
-    supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
+    supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
+    supabase.from("consultation_packages").select("*").order("sort_order", { ascending: true }),
+    supabase.from("member_profiles").select("*").order("created_at", { ascending: false }),
+    supabase.from("package_orders").select("*").order("created_at", { ascending: false }).limit(100),
+    supabase.from("letters").select("id, thread_id, sender_id, is_opening, reply_type, title, content, template_code, moderation_status, created_at, reviewed_at, review_note").order("created_at", { ascending: false }).limit(100)
   ]);
 
   // Jika adminClient gagal karena Invalid API key (biasanya karena SUPABASE_SERVICE_ROLE_KEY di hosting Vercel belum diperbarui),
@@ -98,20 +119,27 @@ export async function GET(request: NextRequest) {
   if (postsRes.error && postsRes.error.message?.toLowerCase().includes("invalid api key") && publicClient && supabase !== publicClient) {
     console.warn("[CMS Admin GET] Service role key tidak valid di server hosting, memulihkan data dengan public client Supabase...");
     supabase = publicClient;
-    [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes] = await Promise.all([
+    [postsRes, activitiesRes, testimonialsRes, leadsRes, galleriesRes, streamingRes, companionsRes, packagesRes, membersRes, ordersRes, lettersRes] = await Promise.all([
       supabase.from("blog_posts").select("*").order("published_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }),
       supabase.from("activities").select("*").order("created_at", { ascending: false }),
       supabase.from("testimonials").select("*").order("created_at", { ascending: false }),
       supabase.from("lead_magnets").select("*").order("created_at", { ascending: false }),
       supabase.from("gallery_events").select("*").order("created_at", { ascending: false }),
       supabase.from("streaming_videos").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
-      supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
+      supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
+    supabase.from("consultation_packages").select("*").order("sort_order", { ascending: true }),
+    supabase.from("member_profiles").select("*").order("created_at", { ascending: false }),
+    supabase.from("package_orders").select("*").order("created_at", { ascending: false }).limit(100),
+    supabase.from("letters").select("id, thread_id, sender_id, is_opening, reply_type, title, content, template_code, moderation_status, created_at, reviewed_at, review_note").order("created_at", { ascending: false }).limit(100)
     ]);
   }
 
   if (postsRes.error) {
     console.error("[CMS Server Error] Gagal membaca blog_posts dari Supabase:", postsRes.error);
     return NextResponse.json({ ok: false, message: `Gagal membaca artikel dari database: ${postsRes.error.message}` }, { status: 500 });
+  }
+  if (ordersRes.error || lettersRes.error) {
+    return NextResponse.json({ ok: false, message: ordersRes.error?.message || lettersRes.error?.message }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -123,7 +151,11 @@ export async function GET(request: NextRequest) {
       "lead-magnets": leadsRes.data || [],
       galleries: galleriesRes.data || [],
       streaming: streamingRes.data || [],
-      companions: companionsRes.data || []
+      companions: companionsRes.data || [],
+      packages: packagesRes?.data || [],
+      members: membersRes?.data || [],
+      orders: ordersRes?.data || [],
+      letters: lettersRes?.data || []
     }
   });
 }
@@ -135,7 +167,11 @@ const allowedColumns: Record<CmsSection, string[]> = {
   "lead-magnets": ["title", "description", "file_url", "cta_label", "status"],
   galleries: ["title", "slug", "description", "cover_image_url", "source_url", "event_date", "status"],
   streaming: ["title", "slug", "description", "video_url", "thumbnail_url", "source_label", "stream_type", "published_at", "live_at", "sort_order", "is_featured", "status"],
-  companions: ["name", "role", "badge", "credential", "image_url", "description", "preview", "focus_tags", "education", "focus", "experience", "languages", "cta_enabled", "sort_order", "status"]
+  companions: ["name", "role", "badge", "credential", "image_url", "description", "preview", "focus_tags", "education", "focus", "experience", "languages", "cta_enabled", "sort_order", "status"],
+  packages: ["code", "name", "category", "price", "original_price", "duration_days", "letter_quota", "description", "badge", "features", "is_active", "sort_order"],
+  members: ["tier", "role", "bio", "alias"],
+  orders: [],
+  letters: []
 };
 
 function isValidUuid(value?: string | null): boolean {
@@ -163,6 +199,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, message: "Payload tidak valid." }, { status: 400 });
   }
 
+  if (section === "orders" || section === "letters") return NextResponse.json({ ok: false, message: "Gunakan alur review khusus." }, { status: 400 });
+
   const table = tableBySection[section];
   const rawId = typeof body.id === "string" && body.id ? body.id : null;
   const isRealUuid = isValidUuid(rawId);
@@ -186,6 +224,9 @@ export async function POST(request: NextRequest) {
           if (existing?.id) targetId = existing.id;
         } else if (cleanPayload.name && section === "companions") {
           const { data: existing } = await supabase.from(table).select("id").eq("name", String(cleanPayload.name)).maybeSingle();
+          if (existing?.id) targetId = existing.id;
+        } else if (cleanPayload.code && section === "packages") {
+          const { data: existing } = await supabase.from(table).select("id").eq("code", String(cleanPayload.code)).maybeSingle();
           if (existing?.id) targetId = existing.id;
         }
       }
@@ -228,6 +269,8 @@ export async function DELETE(request: NextRequest) {
   const section = sectionFrom(request.nextUrl.searchParams.get("section"));
   const rawId = request.nextUrl.searchParams.get("id");
   if (!section || !rawId) return NextResponse.json({ ok: false, message: "Parameter tidak valid." }, { status: 400 });
+
+  if (section === "orders" || section === "letters") return NextResponse.json({ ok: false, message: "Data tidak dapat dihapus melalui CMS." }, { status: 400 });
 
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();

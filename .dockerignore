@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.git
+.env*.local
+tmp
+tsconfig.tsbuildinfo
+PRD-*.pdf
+RINGKASAN-*.pdf
+public/uploads/*
+!public/uploads/.gitkeep

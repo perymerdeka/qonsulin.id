@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { BookOpenText, CalendarCheck2, CalendarPlus2, Database, Eye, FilePlus2, FileText, Globe2, ImagePlus, Images, LayoutDashboard, LogOut, MessageCircle, MessageSquarePlus, MessageSquareQuote, PenLine, Radio, RefreshCw, Save, Settings as SettingsIcon, ShieldCheck, Trash2, Upload, UsersRound } from "lucide-react";
+import { BookOpenText, CalendarCheck2, CalendarPlus2, Database, Eye, FilePlus2, FileText, Globe2, ImagePlus, Images, LayoutDashboard, LogOut, MessageCircle, MessageSquarePlus, MessageSquareQuote, PenLine, Radio, RefreshCw, Save, Settings as SettingsIcon, ShieldCheck, Trash2, Upload, UsersRound, CreditCard, UserCheck, Sparkles } from "lucide-react";
 import { Brand } from "@/components/PublicChrome";
 import { slugify, type ActivityItem, type BlogPost, type CmsStatus, type CompanionProfile, type GalleryEvent, type LeadMagnet, type StreamingVideo, type Testimonial } from "@/lib/cms";
 import { hasSupabaseEnv } from "@/lib/supabase";
@@ -9,13 +9,19 @@ import dynamic from "next/dynamic";
 import "@uiw/react-md-editor/markdown-editor.css";
 import "@uiw/react-markdown-preview/markdown.css";
 import Image from "next/image";
+import { ConsultationPackage, formatRupiah } from "@/lib/packages";
+import { MemberProfile } from "@/lib/member";
+import { AdminReviewPanel } from "@/components/AdminReviewPanel";
+import { AdminPagination } from "@/components/AdminPagination";
+import type { PackageOrder } from "@/lib/packages";
+import type { LetterItem } from "@/lib/letters";
 
 const RichTextEditor = dynamic(() => import("./RichTextEditor"), { ssr: false, loading: () => <div style={{ padding: "20px", border: "1px solid #ddd", background: "white", borderRadius: "8px", marginTop: "10px" }}>Memuat Editor...</div> });
 
 
-type Section = "dashboard" | "posts" | "activities" | "testimonials" | "lead-magnets" | "galleries" | "streaming" | "companions" | "settings";
+type Section = "dashboard" | "posts" | "activities" | "testimonials" | "lead-magnets" | "galleries" | "streaming" | "companions" | "packages" | "members" | "orders" | "letters" | "settings";
 type Mode = "list" | "new" | "edit";
-type AnyRow = BlogPost | ActivityItem | Testimonial | LeadMagnet | GalleryEvent | StreamingVideo | CompanionProfile;
+type AnyRow = BlogPost | ActivityItem | Testimonial | LeadMagnet | GalleryEvent | StreamingVideo | CompanionProfile | ConsultationPackage | MemberProfile;
 type Store = {
   posts: BlogPost[];
   activities: ActivityItem[];
@@ -24,6 +30,10 @@ type Store = {
   galleries: GalleryEvent[];
   streaming: StreamingVideo[];
   companions: CompanionProfile[];
+  packages: ConsultationPackage[];
+  members: MemberProfile[];
+  orders: PackageOrder[];
+  letters: LetterItem[];
 };
 
 type CmsApiResponse = {
@@ -45,6 +55,10 @@ const sections: Array<{ id: Section; label: string; icon: React.ComponentType<{ 
   { id: "galleries", label: "Dokumentasi Galeri", icon: Images },
   { id: "streaming", label: "Tayangan Video", icon: Radio },
   { id: "companions", label: "Kelola Pendamping", icon: UsersRound },
+  { id: "packages", label: "Tarif & Paket", icon: CreditCard },
+  { id: "members", label: "Kelola Member", icon: UserCheck },
+  { id: "orders", label: "Pesanan Paket", icon: CreditCard },
+  { id: "letters", label: "Moderasi Surat", icon: ShieldCheck },
   { id: "settings", label: "Status & Sinkronisasi", icon: SettingsIcon }
 ];
 
@@ -55,7 +69,9 @@ const tableBySection = {
   "lead-magnets": "lead_magnets",
   galleries: "gallery_events",
   streaming: "streaming_videos",
-  companions: "companions"
+  companions: "companions",
+  packages: "consultation_packages",
+  members: "member_profiles"
 } as const;
 
 const emptyStore: Store = {
@@ -65,7 +81,11 @@ const emptyStore: Store = {
   "lead-magnets": [],
   galleries: [],
   streaming: [],
-  companions: []
+  companions: [],
+  packages: [],
+  members: [],
+  orders: [],
+  letters: []
 };
 
 export default function AdminApp({ initialSlug, initialAuthenticated }: { initialSlug: string[]; initialAuthenticated: boolean }) {
@@ -127,7 +147,7 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
     window.history.pushState(null, "", adminPath(next, nextMode, id));
   }
 
-  async function save(sectionId: Exclude<Section, "dashboard" | "settings">, payload: Record<string, unknown>, id?: string) {
+  async function save(sectionId: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, payload: Record<string, unknown>, id?: string) {
     setLoading(true);
     setMessage("");
     const now = new Date().toISOString();
@@ -173,7 +193,7 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
     }
   }
 
-  async function remove(sectionId: Exclude<Section, "dashboard" | "settings">, id: string) {
+  async function remove(sectionId: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, id: string) {
     if (!window.confirm("Hapus konten ini secara permanen dari database?")) return;
     setLoading(true);
     try {
@@ -203,14 +223,14 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
     <main className="admin">
       <div className="admin-shell">
         <aside className="sidebar">
-          <div><div className="admin-brand-row"><Brand /><span>ADMIN</span></div><div className="admin-user"><strong>Level: Administrator</strong><br /><small>{adminEmail}</small></div></div>
+          <div className="sidebar-header"><div className="admin-brand-row"><Brand /><span>ADMIN</span></div><div className="admin-user"><strong>Level: Administrator</strong><br /><small>{adminEmail}</small></div></div>
           <nav className="admin-nav">
             {sections.map((item) => {
               const Icon = item.icon;
               return <button className={section === item.id ? "active" : ""} key={item.id} onClick={() => navigate(item.id)}><Icon size={18} />{item.label}</button>;
             })}
           </nav>
-          <div style={{ marginTop: "auto", display: "grid", gap: ".5rem" }}>
+          <div className="sidebar-actions">
             <a className="admin-badge" href={publicSiteUrl} target="_blank" rel="noreferrer"><Globe2 size={15} />Lihat Website Publik</a>
             <button className="admin-badge" onClick={async () => { await fetch("/api/admin/logout", { method: "POST" }); setLoggedIn(false); }}><LogOut size={15} />Keluar Akun (Log Out)</button>
           </div>
@@ -219,6 +239,7 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
           {message && <div className="admin-alert">{message}</div>}
           {section === "dashboard" && <Dashboard store={store} setSection={(next) => navigate(next)} />}
           {section === "settings" && <Settings loading={loading} onRefresh={loadAll} />}
+          {(section === "orders" || section === "letters") && <AdminReviewPanel section={section} orders={store.orders || []} letters={store.letters || []} members={store.members} onRefresh={loadAll} />}
           {isCollection(section) && mode === "list" && <Collection section={section} rows={store[section]} openNew={() => navigate(section, "new")} openEdit={(id) => navigate(section, "edit", id)} onDelete={(id) => remove(section, id)} />}
           {isCollection(section) && mode !== "list" && <CmsForm section={section} row={editingRow} loading={loading} onCancel={() => navigate(section)} onSubmit={(payload) => save(section, payload, editingRow?.id)} />}
           <footer className="admin-footer">Panel Pengelola Qonsulin.id - Sumatra Barat</footer>
@@ -284,7 +305,9 @@ function Dashboard({ store, setSection }: { store: Store; setSection: (section: 
     { label: "Ulasan Anonim", number: store.testimonials.length, help: "Testimoni aman terjaga", id: "testimonials", icon: MessageCircle, tone: "amber" },
     { label: "Lead Magnet", number: store["lead-magnets"].length, help: "Bimbingan ebook gratis", id: "lead-magnets", icon: Upload, tone: "rose" },
     { label: "Galeri Kegiatan", number: store.galleries.length, help: `${store.galleries.filter((row) => row.status === "published").length} terbit, ${store.galleries.filter((row) => row.status === "draft").length} draf`, id: "galleries", icon: Images, tone: "violet" },
-    { label: "Pendamping", number: store.companions.length, help: "Profil tampil di landing page", id: "companions", icon: UsersRound, tone: "emerald" }
+    { label: "Pendamping", number: store.companions.length, help: "Profil tampil di landing page", id: "companions", icon: UsersRound, tone: "emerald" },
+    { label: "Tarif & Paket", number: store.packages.length, help: "Katalog layanan & membership", id: "packages", icon: CreditCard, tone: "amber" },
+    { label: "Total Member", number: store.members.length, help: `${store.members.filter((m) => m.tier === "premium").length} member premium`, id: "members", icon: UserCheck, tone: "blue" }
   ] as const;
   const quickActions = [
     ["Buat Artikel Baru", "posts", FilePlus2],
@@ -292,7 +315,9 @@ function Dashboard({ store, setSection }: { store: Store; setSection: (section: 
     ["Tambah Testimonial", "testimonials", MessageSquarePlus],
     ["Tambah Lead Magnet", "lead-magnets", Upload],
     ["Tambah Kegiatan", "galleries", ImagePlus],
-    ["Tambah Pendamping", "companions", UsersRound]
+    ["Tambah Pendamping", "companions", UsersRound],
+    ["Atur Paket Layanan", "packages", CreditCard],
+    ["Kelola Tier Member", "members", UserCheck]
   ] as const;
 
   return (
@@ -310,20 +335,34 @@ function Dashboard({ store, setSection }: { store: Store; setSection: (section: 
   );
 }
 
-function Collection({ section, rows, openNew, openEdit, onDelete }: { section: Exclude<Section, "dashboard" | "settings">; rows: AnyRow[]; openNew: () => void; openEdit: (id: string) => void; onDelete: (id: string) => void }) {
+function Collection({ section, rows, openNew, openEdit, onDelete }: { section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">; rows: AnyRow[]; openNew: () => void; openEdit: (id: string) => void; onDelete: (id: string) => void }) {
   const config = collectionConfig(section);
   const [status, setStatus] = useState<CmsStatus | "all">("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const visibleRows = status === "all" ? rows : rows.filter((row) => "status" in row && row.status === status);
+  const totalPages = Math.max(1, Math.ceil(visibleRows.length / pageSize));
+  const paginatedRows = visibleRows.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [section, status]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
   return (
     <>
       <div className="admin-title"><div><h1>{config.title}</h1><p>{config.subtitle}</p></div><button className="btn btn-primary" onClick={openNew}><FilePlus2 size={15} />{config.button}</button></div>
       <div className="admin-toolbar"><select value={status} onChange={(event) => setStatus(event.target.value as CmsStatus | "all")}><option value="all">Status: Semua</option><option value="published">Published</option><option value="draft">Draft</option><option value="archived">Archived</option></select></div>
-      <div className="table-wrap"><table><thead><tr>{config.columns.map((column) => <th key={column}>{column}</th>)}<th>Aksi</th></tr></thead><tbody>{visibleRows.length === 0 ? <tr><td colSpan={config.columns.length + 1}>Belum ada data pada filter ini.</td></tr> : visibleRows.map((row) => <tr key={row.id}>{config.render(row)}<td><span className="icon-actions"><a href={publicHref(section, row)} aria-label="lihat" target="_blank"><Eye size={16} /></a><button aria-label="edit" onClick={() => openEdit(row.id)}><PenLine size={16} /></button><button aria-label="hapus" onClick={() => onDelete(row.id)}><Trash2 size={16} /></button></span></td></tr>)}</tbody></table></div>
+      <div className="table-wrap"><table><thead><tr>{config.columns.map((column) => <th key={column}>{column}</th>)}<th>Aksi</th></tr></thead><tbody>{visibleRows.length === 0 ? <tr><td colSpan={config.columns.length + 1}>Belum ada data pada filter ini.</td></tr> : paginatedRows.map((row) => <tr key={row.id}>{config.render(row)}<td><span className="icon-actions"><a href={publicHref(section, row)} aria-label="lihat" target="_blank"><Eye size={16} /></a><button aria-label="edit" onClick={() => openEdit(row.id)}><PenLine size={16} /></button><button aria-label="hapus" onClick={() => onDelete(row.id)}><Trash2 size={16} /></button></span></td></tr>)}</tbody></table></div>
+      <AdminPagination page={page} totalItems={visibleRows.length} pageSize={pageSize} onChange={setPage} />
     </>
   );
 }
 
-function CmsForm({ section, row, loading, onCancel, onSubmit }: { section: Exclude<Section, "dashboard" | "settings">; row: AnyRow | null; loading: boolean; onCancel: () => void; onSubmit: (payload: Record<string, unknown>) => void }) {
+function CmsForm({ section, row, loading, onCancel, onSubmit }: { section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">; row: AnyRow | null; loading: boolean; onCancel: () => void; onSubmit: (payload: Record<string, unknown>) => void }) {
   const config = formConfig(section);
   const [form, setForm] = useState<Record<string, string | boolean>>(() => initialForm(section, row));
   const titleValue = String(form.title || "");
@@ -499,7 +538,7 @@ function formatAdminDate(value?: string | null) {
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(d);
 }
 
-function formConfig(section: Exclude<Section, "dashboard" | "settings">) {
+function formConfig(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">) {
   const commonStatus: FieldDef = { name: "status", label: "Status Publikasi", type: "select", options: [["draft", "Draft"], ["published", "Published"], ["archived", "Archived"]] };
   const configs = {
     posts: { newTitle: "Tulis Artikel Baru", editTitle: "Sunting Artikel", help: "Tulis artikel seputar kesehatan mental, edukasi, dan inspirasi.", submit: "Simpan & Publikasikan", fields: [{ name: "title", label: "Judul Artikel *", required: true }, { name: "slug", label: "Tautan Pendek Web (Otomatis dari Judul)" }, { name: "cover_image_url", label: "Foto Sampul Utama", type: "image" }, { name: "category", label: "Kategori Artikel" }, { name: "tags", label: "Kata Kunci / Tagar (pisahkan dengan koma)" }, commonStatus, { name: "seo_title", label: "Judul untuk Google (Mesin Pencari)" }, { name: "seo_description", label: "Deskripsi Singkat di Google", type: "textarea" }, { name: "excerpt", label: "Ringkasan Singkat Artikel *", type: "textarea", required: true, wide: true }, { name: "content", label: "Isi Lengkap Artikel *", type: "markdown", required: true, wide: true }] },
@@ -508,12 +547,44 @@ function formConfig(section: Exclude<Section, "dashboard" | "settings">) {
     "lead-magnets": { newTitle: "Tambah Ebook Edukasi", editTitle: "Sunting Ebook Edukasi", help: "Kelola panduan gratis / ebook untuk pembaca.", submit: "Simpan Ebook", fields: [{ name: "title", label: "Judul Ebook *", required: true }, { name: "file_url", label: "Tautan Berkas Ebook / PDF", type: "url" }, { name: "cta_label", label: "Teks Tombol (Misal: Unduh Gratis)" }, commonStatus, { name: "description", label: "Ringkasan Ebook", type: "textarea", wide: true }] },
     galleries: { newTitle: "Tambah Dokumentasi Galeri", editTitle: "Sunting Dokumentasi Galeri", help: "Kelola dokumentasi foto acara dan kegiatan QONSULIN.ID.", submit: "Simpan Galeri", fields: [{ name: "title", label: "Judul Acara *", required: true }, { name: "slug", label: "Tautan Web (Otomatis dari Judul)" }, { name: "event_date", label: "Tanggal Acara", type: "date" }, { name: "cover_image_url", label: "Foto Sampul Acara", type: "image" }, { name: "source_url", label: "Tautan Sumber Tambahan", type: "url" }, commonStatus, { name: "description", label: "Keterangan Acara", type: "textarea", wide: true }] },
     streaming: { newTitle: "Tambah Video Edukasi", editTitle: "Sunting Video Edukasi", help: "Kelola tayangan video edukasi dan rekaman siaran.", submit: "Simpan Video", fields: [{ name: "title", label: "Judul Video *", required: true }, { name: "slug", label: "Tautan Web (Otomatis dari Judul)" }, { name: "video_url", label: "Tautan Video YouTube / Rekaman *", type: "url", required: true }, { name: "thumbnail_url", label: "Foto Sampul Video", type: "image" }, { name: "source_label", label: "Sumber Siaran (Misal: YouTube)" }, { name: "stream_type", label: "Jenis Siaran", type: "select", options: [["offline", "Video Rekaman"], ["live", "Sedang Tayang (Live)"], ["upcoming", "Jadwal Tayang Mendatang"]] }, { name: "published_at", label: "Tanggal Terbit", type: "date" }, { name: "live_at", label: "Jadwal Mulai Tayang", type: "datetime-local" }, { name: "sort_order", label: "Urutan Tampil", type: "number" }, commonStatus, { name: "is_featured", label: "Tampilkan di Halaman Utama (Unggulan)", type: "checkbox" }, { name: "description", label: "Keterangan Video", type: "textarea", wide: true }] },
-    companions: { newTitle: "Tambah Profil Pendamping", editTitle: "Sunting Profil Pendamping", help: "Kelola profil rekan pendamping yang tampil di website QONSULIN.ID.", submit: "Simpan Profil", fields: [{ name: "name", label: "Nama Lengkap & Gelar *", required: true }, { name: "role", label: "Profesi / Peran *", required: true }, { name: "badge", label: "Kategori Layanan (Badge)" }, { name: "credential", label: "Latar Belakang Pendidikan Singkat" }, { name: "image_url", label: "Foto Profil", type: "image" }, { name: "languages", label: "Bahasa yang Dikuasai" }, { name: "sort_order", label: "Urutan Tampil", type: "number" }, commonStatus, { name: "cta_enabled", label: "Tampilkan Tombol Konsultasi WhatsApp", type: "checkbox" }, { name: "preview", label: "Ringkasan Singkat di Kartu Depan", type: "textarea", wide: true }, { name: "description", label: "Profil & Latar Belakang Lengkap", type: "textarea", wide: true }] }
-  } satisfies Record<Exclude<Section, "dashboard" | "settings">, { newTitle: string; editTitle: string; help: string; submit: string; fields: FieldDef[] }>;
+    companions: { newTitle: "Tambah Profil Pendamping", editTitle: "Sunting Profil Pendamping", help: "Kelola profil rekan pendamping yang tampil di website QONSULIN.ID.", submit: "Simpan Profil", fields: [{ name: "name", label: "Nama Lengkap & Gelar *", required: true }, { name: "role", label: "Profesi / Peran *", required: true }, { name: "badge", label: "Kategori Layanan (Badge)" }, { name: "credential", label: "Latar Belakang Pendidikan Singkat" }, { name: "image_url", label: "Foto Profil", type: "image" }, { name: "languages", label: "Bahasa yang Dikuasai" }, { name: "sort_order", label: "Urutan Tampil", type: "number" }, commonStatus, { name: "cta_enabled", label: "Tampilkan Tombol Konsultasi WhatsApp", type: "checkbox" }, { name: "preview", label: "Ringkasan Singkat di Kartu Depan", type: "textarea", wide: true }, { name: "description", label: "Profil & Latar Belakang Lengkap", type: "textarea", wide: true }] },
+    packages: {
+      newTitle: "Tambah Paket Baru",
+      editTitle: "Sunting Paket & Tarif",
+      help: "Kelola harga, durasi, kuota surat, dan fitur paket konsultasi / membership.",
+      submit: "Simpan Paket",
+      fields: [
+        { name: "code", label: "Kode Unik Paket (misal: member_premium) *", required: true },
+        { name: "name", label: "Nama Paket *", required: true },
+        { name: "category", label: "Kategori Layanan *", type: "select", options: [["membership", "Membership Surat Batin"], ["consultation", "Konsultasi 1-on-1"]] },
+        { name: "price", label: "Tarif Resmi (Rp) *", type: "number", required: true },
+        { name: "original_price", label: "Harga Coret Promo (Rp opsional)", type: "number" },
+        { name: "badge", label: "Label Badge (misal: Pilihan Populer, Terjangkau)" },
+        { name: "letter_quota", label: "Kuota Surat Bulanan (-1 jika Unlimited)", type: "number" },
+        { name: "duration_days", label: "Masa Aktif Hari (misal: 30 untuk bulanan)", type: "number" },
+        { name: "sort_order", label: "Urutan Tampil", type: "number" },
+        { name: "is_active", label: "Aktifkan Paket (Ditampilkan di Website)", type: "checkbox" },
+        { name: "description", label: "Deskripsi Singkat Paket", type: "textarea", wide: true },
+        { name: "features", label: "Daftar Fitur / Benefit (pisahkan enter tiap baris)", type: "textarea", wide: true }
+      ]
+    },
+    members: {
+      newTitle: "Kelola Member",
+      editTitle: "Ubah Tier & Akses Member",
+      help: "Aktivasi manual paket member (Free / Premium) setelah konfirmasi bukti transfer WhatsApp.",
+      submit: "Simpan Perubahan Member",
+      fields: [
+        { name: "alias", label: "Nama Alias Member *", required: true },
+        { name: "tier", label: "Status Tier Member *", type: "select", options: [["free", "Free Member (3 surat/bln)"], ["premium", "Premium Member (Tanpa batas)"]] },
+        { name: "role", label: "Hak Akses Akun *", type: "select", options: [["member", "Member"], ["moderator", "Moderator"], ["admin", "Administrator"]] },
+        { name: "bio", label: "Bio Member", type: "textarea", wide: true }
+      ]
+    }
+  } satisfies Record<Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, { newTitle: string; editTitle: string; help: string; submit: string; fields: FieldDef[] }>;
   return configs[section];
 }
 
-function collectionConfig(section: Exclude<Section, "dashboard" | "settings">) {
+function collectionConfig(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">) {
   const statusCell = (status: CmsStatus) => <td><span className={`status ${status}`}>{status}</span></td>;
   const configs = {
     posts: { title: "Manajemen Artikel & Blog", subtitle: "Koleksi tulisan edukasi kesehatan mental dan bacaan kawan cerita.", button: "Tulis Artikel Baru", columns: ["Judul Artikel", "Kategori", "Tanggal Terbit", "Tautan Web", "Status"], render: (row: AnyRow) => { const post = row as BlogPost; return <><td><strong>{post.title}</strong></td><td>{post.category}</td><td>{formatAdminDate(post.published_at || post.created_at)}</td><td>/{post.slug}</td>{statusCell(post.status)}</>; } },
@@ -522,12 +593,60 @@ function collectionConfig(section: Exclude<Section, "dashboard" | "settings">) {
     "lead-magnets": { title: "Ebook & Panduan Edukasi", subtitle: "Panduan dan checklist gratis untuk pembaca website.", button: "Tambah Ebook", columns: ["Judul", "Tombol", "Berkas", "Status"], render: (row: AnyRow) => { const item = row as LeadMagnet; return <><td><strong>{item.title}</strong></td><td>{item.cta_label}</td><td>{item.file_url ? "Tersedia" : "-"}</td>{statusCell(item.status)}</>; } },
     galleries: { title: "Dokumentasi Galeri", subtitle: "Dokumentasi foto dan liputan kegiatan QONSULIN.ID.", button: "Tambah Galeri", columns: ["Judul Acara", "Tautan Web", "Foto", "Status"], render: (row: AnyRow) => { const item = row as GalleryEvent; return <><td><strong>{item.title}</strong></td><td>/{item.slug || "-"}</td><td>{item.media_count || 0}</td>{statusCell(item.status)}</>; } },
     streaming: { title: "Tayangan Video", subtitle: "Koleksi video edukasi, rekaman siaran, dan informasi tayangan langsung.", button: "Tambah Video", columns: ["Judul Video", "Jenis Siaran", "Sumber", "Status"], render: (row: AnyRow) => { const item = row as StreamingVideo; return <><td><strong>{item.title}</strong></td><td>{item.stream_type === "live" ? "Live" : item.stream_type === "upcoming" ? "Jadwal" : "Rekaman"}</td><td>{item.source_label || "-"}</td>{statusCell(item.status)}</>; } },
-    companions: { title: "Kelola Profil Pendamping", subtitle: "Daftar profil pendamping yang tampil di halaman depan website.", button: "Tambah Pendamping", columns: ["Nama & Gelar", "Profesi / Peran", "Urutan", "Status"], render: (row: AnyRow) => { const item = row as CompanionProfile; return <><td><strong>{item.name}</strong></td><td>{item.role}</td><td>{item.sort_order || 0}</td>{statusCell(item.status)}</>; } }
+    companions: { title: "Kelola Profil Pendamping", subtitle: "Daftar profil pendamping yang tampil di halaman depan website.", button: "Tambah Pendamping", columns: ["Nama & Gelar", "Profesi / Peran", "Urutan", "Status"], render: (row: AnyRow) => { const item = row as CompanionProfile; return <><td><strong>{item.name}</strong></td><td>{item.role}</td><td>{item.sort_order || 0}</td>{statusCell(item.status)}</>; } },
+    packages: {
+      title: "Manajemen Tarif & Paket Layanan",
+      subtitle: "Pengaturan harga membership surat batin dan tarif sesi konsultasi 1-on-1.",
+      button: "Tambah Paket",
+      columns: ["Nama Paket", "Kategori", "Tarif", "Kuota Surat", "Masa Aktif", "Status"],
+      render: (row: AnyRow) => {
+        const pkg = row as ConsultationPackage;
+        return (
+          <>
+            <td>
+              <strong>{pkg.name}</strong>
+              {pkg.badge && <span className="pill" style={{ marginLeft: 6, fontSize: "0.7rem" }}>{pkg.badge}</span>}
+              <div style={{ fontSize: "0.75rem", color: "var(--color-muted)" }}>{pkg.code}</div>
+            </td>
+            <td><span className="pill muted">{pkg.category === "membership" ? "Membership" : "Konsultasi"}</span></td>
+            <td>
+              <strong>{formatRupiah(pkg.price)}</strong>
+              {pkg.original_price ? <del style={{ display: "block", fontSize: "0.72rem", color: "var(--color-muted)" }}>{formatRupiah(pkg.original_price)}</del> : null}
+            </td>
+            <td>{pkg.letter_quota === -1 ? "Tanpa Batas" : (pkg.letter_quota ? `${pkg.letter_quota} surat/bln` : "-")}</td>
+            <td>{pkg.duration_days ? `${pkg.duration_days} hari` : "-"}</td>
+            <td><span className={`pill ${pkg.is_active ? "green" : "gray"}`}>{pkg.is_active ? "Aktif" : "Nonaktif"}</span></td>
+          </>
+        );
+      }
+    },
+    members: {
+      title: "Manajemen Akun & Tier Member",
+      subtitle: "Aktivasi manual paket Premium setelah verifikasi bukti transfer WhatsApp.",
+      button: "Ubah Member",
+      columns: ["Nama Alias", "Status Tier", "Hak Akses", "Bergabung", "Bio Singkat"],
+      render: (row: AnyRow) => {
+        const m = row as MemberProfile;
+        return (
+          <>
+            <td><strong>{m.alias}</strong></td>
+            <td>
+              <span className={`pill ${m.tier === "premium" ? "" : "muted"}`} style={m.tier === "premium" ? { background: "#fef3c7", color: "#92400e" } : {}}>
+                {m.tier === "premium" ? "★ Premium" : "Free"}
+              </span>
+            </td>
+            <td><span className="pill muted">{m.role}</span></td>
+            <td>{formatAdminDate(m.created_at)}</td>
+            <td style={{ fontSize: "0.8rem", color: "var(--color-muted)" }}>{m.bio || "-"}</td>
+          </>
+        );
+      }
+    }
   };
   return configs[section];
 }
 
-function initialForm(section: Exclude<Section, "dashboard" | "settings">, row: AnyRow | null) {
+function initialForm(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, row: AnyRow | null) {
   const fields = formConfig(section).fields;
   return fields.reduce<Record<string, string | boolean>>((acc, field) => {
     const value = row ? (row as unknown as Record<string, unknown>)[field.name] : undefined;
@@ -535,7 +654,11 @@ function initialForm(section: Exclude<Section, "dashboard" | "settings">, row: A
     else if (field.name === "stream_type") acc[field.name] = String(value || "offline");
     else if (field.name === "sort_order") acc[field.name] = String(value ?? 0);
     else if (field.name === "is_featured") acc[field.name] = Boolean(value);
-    else if (field.name === "cta_enabled") acc[field.name] = value === undefined ? true : Boolean(value);
+    else if (field.name === "cta_enabled" || field.name === "is_active") acc[field.name] = value === undefined ? true : Boolean(value);
+    else if (field.name === "category") acc[field.name] = String(value || "membership");
+    else if (field.name === "tier") acc[field.name] = String(value || "free");
+    else if (field.name === "role") acc[field.name] = String(value || "member");
+    else if (field.name === "features") acc[field.name] = Array.isArray(value) ? value.join("\n") : String(value || "");
     else if (field.name === "tags") acc[field.name] = Array.isArray(value) ? value.join(", ") : String(value || "");
     else if (["focus_tags", "education", "focus", "experience"].includes(field.name)) acc[field.name] = Array.isArray(value) ? value.join("\n") : String(value || "");
     else acc[field.name] = String(value || "");
@@ -543,7 +666,7 @@ function initialForm(section: Exclude<Section, "dashboard" | "settings">, row: A
   }, {});
 }
 
-function formToPayload(section: Exclude<Section, "dashboard" | "settings">, form: Record<string, string | boolean>) {
+function formToPayload(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, form: Record<string, string | boolean>) {
   const payload: Record<string, unknown> = { ...form };
   if ("tags" in payload) payload.tags = splitList(String(payload.tags || ""));
   for (const key of ["focus_tags", "education", "focus", "experience"]) {
@@ -552,6 +675,12 @@ function formToPayload(section: Exclude<Section, "dashboard" | "settings">, form
   if ("sort_order" in payload) payload.sort_order = Number(payload.sort_order || 0);
   if ("is_featured" in payload) payload.is_featured = Boolean(payload.is_featured);
   if ("cta_enabled" in payload) payload.cta_enabled = Boolean(payload.cta_enabled);
+  if ("is_active" in payload) payload.is_active = Boolean(payload.is_active);
+  if ("features" in payload) payload.features = splitList(String(payload.features || ""), true);
+  if ("price" in payload) payload.price = Number(payload.price || 0);
+  if ("original_price" in payload) payload.original_price = payload.original_price !== "" && payload.original_price !== null ? Number(payload.original_price) : null;
+  if ("duration_days" in payload) payload.duration_days = payload.duration_days !== "" && payload.duration_days !== null ? Number(payload.duration_days) : null;
+  if ("letter_quota" in payload) payload.letter_quota = payload.letter_quota !== "" && payload.letter_quota !== null ? Number(payload.letter_quota) : null;
   if ((section === "posts" || section === "galleries" || section === "streaming") && !payload.slug && payload.title) payload.slug = slugify(String(payload.title));
   return payload;
 }
@@ -563,7 +692,7 @@ function splitList(value: string, multilineOnly = false) {
     .filter(Boolean);
 }
 
-function normalizePayload(section: Exclude<Section, "dashboard" | "settings">, payload: Record<string, unknown>, now: string, isUpdate = false) {
+function normalizePayload(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, payload: Record<string, unknown>, now: string, isUpdate = false) {
   const normalized: Record<string, unknown> = { ...payload, updated_at: now };
   if (!isUpdate && section === "posts" && normalized.status === "published" && !normalized.published_at) {
     normalized.published_at = now;
@@ -575,8 +704,8 @@ function parseSection(value?: string): Section {
   return sections.some((item) => item.id === value) ? value as Section : "dashboard";
 }
 
-function isCollection(section: Section): section is Exclude<Section, "dashboard" | "settings"> {
-  return section !== "dashboard" && section !== "settings";
+function isCollection(section: Section): section is Exclude<Section, "dashboard" | "settings" | "orders" | "letters"> {
+  return section !== "dashboard" && section !== "settings" && section !== "orders" && section !== "letters";
 }
 
 function previewEnabled() {
@@ -592,7 +721,7 @@ function adminPath(section: Section, mode: Mode = "list", id?: string) {
   return `${base}/${section}`;
 }
 
-function publicHref(section: Exclude<Section, "dashboard" | "settings">, row: AnyRow) {
+function publicHref(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, row: AnyRow) {
   if (section === "posts") return `/artikel/${(row as BlogPost).slug}`;
   if (section === "galleries") return `/galeri/${(row as GalleryEvent).slug || row.id}`;
   if (section === "streaming") return (row as StreamingVideo).video_url || "/streaming";

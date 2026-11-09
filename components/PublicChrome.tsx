@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Facebook, Instagram, Linkedin, Mail, MapPin, Menu, MessageCircle, Music2, Phone, Youtube, type LucideIcon } from "lucide-react";
+import { Facebook, Instagram, Linkedin, Mail, MapPin, Menu, MessageCircle, Music2, Phone, Youtube, User, type LucideIcon } from "lucide-react";
 import { whatsappUrl } from "@/lib/data";
 
-const nav = [["Beranda", "/"], ["Layanan", "/layanan"], ["Edukasi", "/artikel"], ["Tentang", "/tentang-kami"], ["FAQ", "/faq"]] as const;
+const nav = [["Beranda", "/"], ["Layanan", "/layanan"], ["Edukasi", "/artikel"], ["Tentang", "/tentang-kami"], ["Ruang Member", "/member"], ["FAQ", "/faq"]] as const;
 
 const footerLinks = {
   Layanan: [["Layanan", "/layanan"], ["Konsultan", "/konsultan"], ["Pemetaan Awal", "/asesmen"], ["Dukungan Mahasiswa", "/mahasiswa"]],
@@ -10,7 +10,7 @@ const footerLinks = {
   Perusahaan: [["Tentang Kami", "/tentang-kami"], ["Kegiatan QONSULIN", "/kegiatan"], ["Kontak", "/kontak"]]
 } as const;
 
-const helpLinks = [["FAQ", "/faq"], ["WhatsApp Admin", whatsappUrl], ["Email", "mailto:halo@qonsulin.id"]] as const;
+const helpLinks = [["FAQ", "/faq"], ["WhatsApp Admin", whatsappUrl], ["Ruang Member", "/member"], ["Email", "mailto:halo@qonsulin.id"]] as const;
 
 const contactItems = [
   { label: "PT Voluntrip Minang Mendunia\nBukittinggi,\nSumatera Barat,\nIndonesia", href: "https://www.google.com/maps/search/?api=1&query=PT%20Voluntrip%20Minang%20Mendunia%20Bukittinggi", icon: MapPin },
@@ -50,7 +50,7 @@ export function Header({ active = "/" }: { active?: string }) {
             <a href={whatsappUrl} target="_blank" rel="noreferrer">Mulai Konsultasi</a>
           </nav>
         </details>
-        <a className="btn btn-primary nav-cta" href={whatsappUrl} target="_blank" rel="noreferrer"><MessageCircle size={17} />Mulai Konsultasi</a>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Link href="/member" className="btn btn-white" style={{ minHeight: 40, padding: "0.5rem 0.9rem", fontSize: "0.85rem" }}><User size={15} /> Ruang Member</Link><a className="btn btn-primary nav-cta" href={whatsappUrl} target="_blank" rel="noreferrer"><MessageCircle size={17} />Mulai Konsultasi</a></div>
       </div>
     </header>
   );

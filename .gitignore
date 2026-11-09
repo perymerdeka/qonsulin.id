@@ -9,3 +9,6 @@ tsconfig.tsbuildinfo
 .netlify
 data/
 public/uploads/
+
+# Local Supabase and application secrets
+.env
