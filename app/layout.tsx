@@ -17,8 +17,11 @@ export const dynamic = "force-dynamic";
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const readRuntimeEnv = (name: string) => process.env[name]?.trim().replace(/^['"]|['"]$/g, "") || "";
   const publicConfig = {
-    supabaseUrl: readRuntimeEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    supabasePublishableKey: readRuntimeEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") ||
+    // NEXT_PUBLIC_* values are fixed while Next.js builds the client bundle.
+    // Cloudflare provides these non-public names to the Worker at request time.
+    supabaseUrl: readRuntimeEnv("SUPABASE_URL") || readRuntimeEnv("NEXT_PUBLIC_SUPABASE_URL"),
+    supabasePublishableKey: readRuntimeEnv("SUPABASE_PUBLISHABLE_KEY") ||
+      readRuntimeEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") ||
       readRuntimeEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY") ||
       readRuntimeEnv("NEXT_PUBLIC_SUPABASE_KEY")
   };
