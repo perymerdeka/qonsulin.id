@@ -12,15 +12,18 @@ export default function LetterPoolPage() {
   const router = useRouter();
   const [letters, setLetters] = useState<LetterItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
   const [selectedTopic, setSelectedTopic] = useState("Semua Topik");
 
   const loadLetters = async () => {
     setLoading(true);
+    setErrorMsg("");
     try {
       const data = await getPoolLetters();
       setLetters(data);
-    } catch (e) {
+    } catch (e: any) {
       console.warn("Error loading pool letters:", e);
+      setErrorMsg(e?.message || "Kolam surat gagal dimuat. Periksa koneksi lalu coba lagi.");
     } finally {
       setLoading(false);
     }
@@ -98,6 +101,12 @@ export default function LetterPoolPage() {
           <div style={{ textAlign: "center", padding: "4rem 1rem", color: "var(--color-muted)" }}>
             <p>Mendengarkan gema cerita dari kolam...</p>
           </div>
+        ) : errorMsg ? (
+          <div className="card" style={{ textAlign: "center", padding: "3rem 1.5rem", borderLeft: "4px solid #dc2626" }}>
+            <h3 style={{ fontSize: "1.1rem", color: "#991b1b", marginBottom: "0.5rem" }}>Kolam Surat Gagal Dimuat</h3>
+            <p style={{ color: "var(--color-muted)", fontSize: "0.9rem", maxWidth: 440, margin: "0 auto 1.5rem" }}>{errorMsg}</p>
+            <button onClick={loadLetters} className="btn btn-primary">Coba Lagi</button>
+          </div>
         ) : filteredLetters.length === 0 ? (
           <div className="card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
             <Mail size={36} style={{ color: "var(--color-muted)", margin: "0 auto 1rem" }} />
@@ -114,19 +123,43 @@ export default function LetterPoolPage() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {filteredLetters.map((letter) => (
-              <LetterEnvelopeView
-                key={letter.id}
-                templateCode={letter.template_code}
-                topic={letter.topic}
-                title={letter.title}
-                content={letter.content}
-                authorAlias={letter.author_alias}
-                authorAvatar={letter.author_avatar}
-                dateStr={new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(letter.created_at))}
-                replyType={letter.reply_type}
-                defaultOpen={false}
-                onReplyClick={() => router.push(`/surat/${letter.thread_id}/balas`)}
-              />
+              <div key={letter.id} className="card" style={{ padding: "1.1rem 1.25rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <div style={{ minWidth: 220, flex: 1 }}>
+                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap", marginBottom: "0.45rem" }}>
+                      <span className="pill" style={{ fontSize: "0.72rem" }}>{letter.topic}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--color-muted)" }}>
+                        {new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(letter.created_at))}
+                      </span>
+                    </div>
+                    <h3 style={{ margin: 0, fontSize: "1.05rem", color: "var(--color-ink)" }}>
+                      {letter.title || "Surat Batin Dari Teman Anonim"}
+                    </h3>
+                    <p style={{ margin: "0.4rem 0 0", fontSize: "0.85rem", color: "var(--color-muted)" }}>
+                      Ditulis oleh <strong>{letter.author_alias}</strong>
+                    </p>
+                    <p style={{ margin: "0.6rem 0 0", fontSize: "0.9rem", color: "var(--color-ink)", lineHeight: 1.6 }}>
+                      {letter.content.length > 180 ? `${letter.content.slice(0, 180)}...` : letter.content}
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", minWidth: 190 }}>
+                    <Link
+                      href={`/surat/${letter.thread_id}`}
+                      className="btn btn-white"
+                      style={{ fontSize: "0.82rem", justifyContent: "center", display: "inline-flex", gap: "0.35rem", alignItems: "center" }}
+                    >
+                      <Mail size={14} /> Buka Thread
+                    </Link>
+                    <Link
+                      href={`/surat/${letter.thread_id}/balas`}
+                      className="btn btn-primary"
+                      style={{ fontSize: "0.82rem", justifyContent: "center", display: "inline-flex", gap: "0.35rem", alignItems: "center" }}
+                    >
+                      <HeartHandshake size={14} /> Balas Surat
+                    </Link>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         )}

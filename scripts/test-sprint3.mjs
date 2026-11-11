@@ -222,6 +222,66 @@ async function run() {
   assert.equal(publicCrisisCheck.length, 0, "Crisis letter must NOT appear as approved in pool");
   console.log("   Crisis letter safely held with status crisis_hold.");
 
+  
+  // 9. Privacy Thread: report/block/close + inbox/outbox isolation (SP3-02/03)
+  console.log("9. Testing privacy thread (report, block, close)...");
+  const blockedThreadId = l1.thread_id;
+  const reporter = responder;
+
+  const { data: reportRes } = await reporter.client.rpc("report_letter_thread", {
+    p_thread_id: blockedThreadId,
+    p_reason: "harassment",
+    p_detail: "Balasan mengandung kata kasar yang tidak pantas."
+  });
+  assert.equal(reportRes.ok, true, "Participant must be able to report thread");
+  assert.ok(reportRes.report_id);
+
+  const outsider = await createAuthenticatedClient(`user.out.${ts}@qonsulin.local`, "pass123#", `Outsider_${ts.toString().slice(-4)}`);
+  const { data: reportByOutsider } = await outsider.client
+    .rpc("report_letter_thread", { p_thread_id: blockedThreadId, p_reason: "spam" });
+  assert.equal(reportByOutsider.ok, false, "Outsider must NOT be able to report thread");
+
+  const { data: blockRes } = await reporter.client.rpc("block_letter_thread", { p_thread_id: blockedThreadId });
+  assert.equal(blockRes.ok, true, "Participant must be able to block thread");
+  assert.equal(blockRes.thread_id, blockedThreadId);
+
+  const { data: replyAfterBlock } = await freeUser.client.rpc("send_reply_letter", {
+    p_thread_id: blockedThreadId,
+    p_content: "Balasan setelah thread diblokir seharusnya ditolak.",
+    p_template_code: "vintage_parchment"
+  });
+  assert.equal(replyAfterBlock.ok, false, "Reply after block must be rejected");
+
+  const { data: inboxAfterBlock } = await publicClient
+    .from("letters")
+    .select("id")
+    .eq("thread_id", blockedThreadId)
+    .eq("is_opening", true)
+    .eq("moderation_status", "approved");
+  assert.equal(inboxAfterBlock.length, 0, "Blocked thread must disappear from public pool");
+
+  const { data: closeRes } = await reporter.client.rpc("close_letter_thread", { p_thread_id: blockedThreadId });
+  assert.equal(closeRes.ok, false, "Blocked thread cannot be closed afterwards");
+
+  // Isolasi inbox/outbox: outsider tidak melihat thread yang bukan miliknya.
+  const { data: outsiderThreads } = await outsider.client
+    .from("letter_threads")
+    .select("id")
+    .eq("id", blockedThreadId);
+  assert.equal((outsiderThreads || []).length, 0, "Outsider must not read a private thread row");
+
+  // Fresh thread for close scenario
+  const closeThreadId = l2.thread_id;
+  const { data: closeOk } = await freeUser.client.rpc("close_letter_thread", { p_thread_id: closeThreadId });
+  assert.equal(closeOk.ok, true, "Author can close own thread");
+  const { data: replyAfterClose } = await responder.client.rpc("send_reply_letter", {
+    p_thread_id: closeThreadId,
+    p_content: "Balasan setelah thread ditutup seharusnya ditolak.",
+    p_template_code: "vintage_parchment"
+  });
+  assert.equal(replyAfterClose.ok, false, "Reply after close must be rejected");
+  console.log("   Report, block, close, dan efeknya terhadap reply/pool terverifikasi.");
+
   console.log("\n== All Sprint 3 checks passed successfully! ==");
 }
 

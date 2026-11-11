@@ -33,7 +33,7 @@ export type LetterItem = {
 export type LetterThreadDetail = {
   id: string;
   topic: string;
-  status: "open" | "closed" | "flagged";
+  status: "open" | "closed" | "blocked" | "flagged";
   created_at: string;
   opening_letter: LetterItem;
   replies: LetterItem[];
@@ -217,5 +217,141 @@ export async function getThreadDetail(threadId: string): Promise<LetterThreadDet
     };
   } catch {
     return null;
+  }
+}
+export type MemberThreadSummary = {
+  id: string;
+  topic: string;
+  status: "open" | "closed" | "blocked" | "flagged";
+  created_at: string;
+  moderation_status: "pending" | "approved" | "rejected" | "crisis_hold";
+  is_opening: boolean;
+  preview: string;
+  title?: string | null;
+  author_alias?: string;
+};
+
+export async function getMemberLetterThreads(scope: "inbox" | "outbox"): Promise<MemberThreadSummary[]> {
+  try {
+    const supabase = (getSupabaseClient() || getSupabasePublicClient()) as any;
+    if (!supabase) return [];
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+    if (!userId) return [];
+
+    let rows: any[] = [];
+    if (scope === "outbox") {
+      const { data, error } = await supabase
+        .from("letters")
+        .select("id, thread_id, sender_id, is_opening, title, content, moderation_status, created_at, letter_threads(topic, status)")
+        .eq("sender_id", userId)
+        .eq("is_opening", true)
+        .order("created_at", { ascending: false })
+        .limit(60);
+      if (error || !data) return [];
+      rows = data;
+    } else {
+      const { data: myThreads, error: threadErr } = await supabase
+        .from("letter_threads")
+        .select("id")
+        .eq("author_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(60);
+      if (threadErr || !myThreads) return [];
+      const threadIds = myThreads.map((thread: any) => thread.id);
+      if (threadIds.length === 0) return [];
+
+      const { data: replies, error } = await supabase
+        .from("letters")
+        .select("id, thread_id, sender_id, is_opening, title, content, moderation_status, created_at, letter_threads(topic, status)")
+        .in("thread_id", threadIds)
+        .eq("is_opening", false)
+        .eq("moderation_status", "approved")
+        .neq("sender_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(60);
+      if (error || !replies) return [];
+      rows = replies;
+    }
+
+    const scoped = rows;
+
+    const senderIds = [...new Set(scoped.map((row: any) => row.sender_id))];
+    const { data: profiles } = senderIds.length
+      ? await supabase.from("member_profiles").select("id, alias").in("id", senderIds)
+      : { data: [] };
+    const aliasById = new Map<string, string>((profiles || []).map((profile: any) => [profile.id, profile.alias]));
+
+    return scoped.map((row: any) => ({
+      id: row.thread_id,
+      topic: row.letter_threads?.topic || "Luapan Hati",
+      status: row.letter_threads?.status || "open",
+      created_at: row.created_at,
+      moderation_status: row.moderation_status,
+      is_opening: row.is_opening,
+      title: row.title,
+      preview: row.content,
+      author_alias: aliasById.get(row.sender_id) || "Kawan Anonim"
+    }));
+  } catch {
+    return [];
+  }
+}
+export type ReportCategory =
+  | "personal_data"
+  | "harassment"
+  | "hate_speech"
+  | "sexual_content"
+  | "spam"
+  | "crisis"
+  | "other";
+
+export const reportCategoryLabels: Record<ReportCategory, string> = {
+  personal_data: "Berisi data pribadi / doxxing",
+  harassment: "Pelecehan atau intimidasi",
+  hate_speech: "Ujaran kebencian",
+  sexual_content: "Konten seksual / tidak pantas",
+  spam: "Spam atau promosi tidak relevan",
+  crisis: "Indikasi krisis / membahayakan diri",
+  other: "Lainnya"
+};
+
+export async function reportLetterThread(threadId: string, reason: string, detail?: string) {
+  try {
+    const supabase = (getSupabaseClient() || getSupabasePublicClient()) as any;
+    if (!supabase) return { ok: false, message: "Koneksi database tidak tersedia." };
+    const { data, error } = await supabase.rpc("report_letter_thread", {
+      p_thread_id: threadId,
+      p_reason: reason,
+      p_detail: detail || null
+    });
+    if (error || !data?.ok) return { ok: false, message: data?.message || error?.message || "Laporan gagal dikirim." };
+    return { ok: true, report_id: data.report_id as string };
+  } catch (e: any) {
+    return { ok: false, message: e?.message || "Laporan gagal dikirim." };
+  }
+}
+
+export async function blockLetterThread(threadId: string) {
+  try {
+    const supabase = (getSupabaseClient() || getSupabasePublicClient()) as any;
+    if (!supabase) return { ok: false, message: "Koneksi database tidak tersedia." };
+    const { data, error } = await supabase.rpc("block_letter_thread", { p_thread_id: threadId });
+    if (error || !data?.ok) return { ok: false, message: data?.message || error?.message || "Blokir gagal." };
+    return { ok: true, thread_id: data.thread_id as string };
+  } catch (e: any) {
+    return { ok: false, message: e?.message || "Blokir gagal." };
+  }
+}
+
+export async function closeLetterThread(threadId: string) {
+  try {
+    const supabase = (getSupabaseClient() || getSupabasePublicClient()) as any;
+    if (!supabase) return { ok: false, message: "Koneksi database tidak tersedia." };
+    const { data, error } = await supabase.rpc("close_letter_thread", { p_thread_id: threadId });
+    if (error || !data?.ok) return { ok: false, message: data?.message || error?.message || "Thread gagal ditutup." };
+    return { ok: true, thread_id: data.thread_id as string };
+  } catch (e: any) {
+    return { ok: false, message: e?.message || "Thread gagal ditutup." };
   }
 }

@@ -139,6 +139,26 @@ export default function ReplyLetterPage({ params }: { params: Promise<{ id: stri
 
   const isPremiumUser = profile?.tier === "premium";
 
+  if (thread.opening_letter.sender_id === profile?.id) {
+    return (
+      <main className="site-shell">
+        <Header active="/member" />
+        <section className="section container" style={{ maxWidth: 540, margin: "3rem auto", textAlign: "center" }}>
+          <div className="card" style={{ padding: "2.5rem 1.5rem" }}>
+            <h2>Ini Suratmu Sendiri</h2>
+            <p style={{ color: "var(--color-muted)", margin: "1rem 0 1.5rem" }}>
+              Kamu tidak dapat membalas surat yang kamu tulis. Tunggu balasan dari kawan cerita.
+            </p>
+            <Link href={`/surat/${threadId}`} className="btn btn-primary">
+              Kembali ke Utas Surat
+            </Link>
+          </div>
+        </section>
+        <Footer />
+      </main>
+    );
+  }
+
   return (
     <main className="site-shell">
       <Header active="/member" />

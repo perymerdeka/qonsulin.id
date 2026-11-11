@@ -184,6 +184,34 @@ export default function MemberDashboardPage() {
             </Link>
           </div>
 
+          {/* Card: Surat Masuk */}
+          <div className="card" style={{ padding: "1.5rem", borderLeft: "4px solid #3b82f6" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <h3 style={{ fontSize: "1.1rem", color: "var(--color-ink)" }}>Surat Masuk</h3>
+              <span className="pill" style={{ fontSize: "0.75rem", background: "#dbeafe", color: "#1e40af" }}>Dari Kawan</span>
+            </div>
+            <p style={{ color: "var(--color-muted)", fontSize: "0.85rem", margin: "1rem 0" }}>
+              Lihat balasan surat dari kawan cerita yang terhubung dengan threadmu.
+            </p>
+            <Link href="/member/surat-masuk" className="btn btn-white" style={{ display: "inline-flex", gap: "0.4rem", alignItems: "center", fontSize: "0.85rem", width: "100%", justifyContent: "center" }}>
+              <Mail size={16} /> Buka Surat Masuk
+            </Link>
+          </div>
+
+          {/* Card: Surat Keluar */}
+          <div className="card" style={{ padding: "1.5rem", borderLeft: "4px solid #8b5cf6" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <h3 style={{ fontSize: "1.1rem", color: "var(--color-ink)" }}>Surat Keluar</h3>
+              <span className="pill" style={{ fontSize: "0.75rem", background: "#ede9fe", color: "#5b21b6" }}>Thread Saya</span>
+            </div>
+            <p style={{ color: "var(--color-muted)", fontSize: "0.85rem", margin: "1rem 0" }}>
+              Kelola surat-surat yang telah kamu kirim dan balasan yang sudah diberikan.
+            </p>
+            <Link href="/member/surat-keluar" className="btn btn-white" style={{ display: "inline-flex", gap: "0.4rem", alignItems: "center", fontSize: "0.85rem", width: "100%", justifyContent: "center" }}>
+              <Mail size={16} /> Buka Surat Keluar
+            </Link>
+          </div>
+
           {/* Card: Upgrade Premium */}
           {profile.tier !== "premium" && (
             <div className="card" style={{ padding: "1.5rem", borderLeft: "4px solid var(--accent, #f59e0b)", background: "var(--color-surface-muted)" }}>

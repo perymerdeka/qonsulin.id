@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { Header, Footer } from "@/components/PublicChrome";
 import { getThreadDetail, LetterThreadDetail, replyTypeLabels } from "@/lib/letters";
 import { LetterEnvelopeView } from "@/components/LetterEnvelopeView";
-import { ArrowLeft, Mail, HeartHandshake, MessageCircle, Heart } from "lucide-react";
+import { ArrowLeft, Mail, HeartHandshake, Heart, ShieldCheck, MessageCircle } from "lucide-react";
+import { LetterThreadActions } from "@/components/LetterThreadActions";
+import { getCurrentMemberProfile } from "@/lib/member-auth";
 
 export default function ThreadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -15,6 +17,8 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
 
   const [thread, setThread] = useState<LetterThreadDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isParticipant, setIsParticipant] = useState(false);
+  const [isAuthor, setIsAuthor] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -23,6 +27,14 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         const data = await getThreadDetail(threadId);
         if (!active) return;
         setThread(data);
+        if (data) {
+          const profile = await getCurrentMemberProfile();
+          if (!active) return;
+          const author = data.opening_letter.sender_id === profile?.id;
+          const isReplier = data.replies.some((reply) => reply.sender_id === profile?.id);
+          setIsAuthor(Boolean(profile && author));
+          setIsParticipant(Boolean(profile && (author || isReplier)));
+        }
       } catch (e) {
         console.warn("Failed to load thread detail:", e);
       } finally {
@@ -79,6 +91,24 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
           <span className="pill muted" style={{ fontSize: "0.78rem" }}>
             Topik: {thread.topic}
           </span>
+          {thread.status !== "open" && (
+            <span
+              className="pill"
+              style={{
+                fontSize: "0.75rem",
+                background: thread.status === "blocked" ? "#fee2e2" : "#fef3c7",
+                color: thread.status === "blocked" ? "#991b1b" : "#92400e",
+                display: "inline-flex", gap: "0.3rem", alignItems: "center"
+              }}
+            >
+              <ShieldCheck size={13} />
+              {thread.status === "closed"
+                ? "Percakapan Ditutup"
+                : thread.status === "blocked"
+                  ? "Thread Diblokir"
+                  : "Menunggu Tinjauan Moderator"}
+            </span>
+          )}
         </div>
 
         {/* Opening Letter (Always unfolded) */}
@@ -102,19 +132,37 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
             <h3 style={{ fontSize: "1.15rem", color: "var(--color-ink)", margin: 0, display: "flex", gap: "0.4rem", alignItems: "center" }}>
               <HeartHandshake size={18} style={{ color: "var(--color-brand)" }} /> Balasan Kawan Cerita ({thread.replies.length})
             </h3>
-            <Link href={`/surat/${thread.id}/balas`} className="btn btn-primary" style={{ fontSize: "0.82rem", minHeight: 34, padding: "0.3rem 0.9rem" }}>
-              <Mail size={14} /> Balas Surat Ini
-            </Link>
+            {thread.status === "open" && !isAuthor && (
+              <Link href={`/surat/${thread.id}/balas`} className="btn btn-primary" style={{ fontSize: "0.82rem", minHeight: 34, padding: "0.3rem 0.9rem" }}>
+                <Mail size={14} /> Balas Surat Ini
+              </Link>
+            )}
+            <LetterThreadActions
+              threadId={thread.id}
+              threadStatus={thread.status}
+              asParticipant={isParticipant}
+              onActionComplete={(action) => {
+                if (action === "block") router.refresh();
+                if (action === "close") router.refresh();
+                if (action === "report") {
+                  setIsParticipant(false);
+                }
+              }}
+            />
           </div>
 
           {thread.replies.length === 0 ? (
             <div className="card" style={{ textAlign: "center", padding: "2rem 1rem", background: "var(--color-surface-muted)" }}>
-              <p style={{ color: "var(--color-muted)", fontSize: "0.88rem", marginBottom: "1rem" }}>
-                Belum ada balasan untuk surat ini. Berikan kata-kata penguat pertama untuknya.
+              <p style={{ color: "var(--color-muted)", fontSize: "0.88rem", marginBottom: isAuthor ? 0 : "1rem" }}>
+                {isAuthor
+                  ? "Belum ada balasan. Suratmu sedang menunggu kawan cerita yang tergerak membalas."
+                  : "Belum ada balasan untuk surat ini. Berikan kata-kata penguat pertama untuknya."}
               </p>
-              <Link href={`/surat/${thread.id}/balas`} className="btn btn-soft" style={{ fontSize: "0.85rem" }}>
-                <Heart size={15} /> Tulis Balasan Pertama
-              </Link>
+              {!isAuthor && (
+                <Link href={`/surat/${thread.id}/balas`} className="btn btn-soft" style={{ fontSize: "0.85rem" }}>
+                  <Heart size={15} /> Tulis Balasan Pertama
+                </Link>
+              )}
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
@@ -141,9 +189,21 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
 
           {/* Action Footer */}
           <div style={{ textAlign: "center", marginTop: "2.5rem" }}>
-            <Link href={`/surat/${thread.id}/balas`} className="btn btn-primary" style={{ display: "inline-flex", gap: "0.4rem", minWidth: 200, justifyContent: "center" }}>
-              <Mail size={16} /> Balas Surat Ini
-            </Link>
+            {thread.status === "open" && !isAuthor && (
+              <Link href={`/surat/${thread.id}/balas`} className="btn btn-primary" style={{ display: "inline-flex", gap: "0.4rem", minWidth: 200, justifyContent: "center" }}>
+                <Mail size={16} /> Balas Surat Ini
+              </Link>
+            )}
+            {thread.status === "closed" && (
+              <div style={{ fontSize: "0.85rem", color: "var(--color-muted)" }}>
+                Percakapan ini telah ditutup dan tidak menerima balasan baru.
+              </div>
+            )}
+            {thread.status === "blocked" && (
+              <div style={{ fontSize: "0.85rem", color: "var(--color-muted)" }}>
+                Thread ini telah diblokir dan disembunyikan.
+              </div>
+            )}
           </div>
         </div>
       </section>

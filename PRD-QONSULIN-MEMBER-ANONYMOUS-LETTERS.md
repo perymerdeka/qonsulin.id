@@ -1,8 +1,8 @@
 # PRD — Member, Surat Anonim, dan Paket Qonsulin
 
-- **Status:** Approved & Final v1.2 — Keputusan Resmi Founder Qonsulin Diadopsi
-- **Tanggal:** 6 November 2026
-- **Target rilis:** MVP beta, 25 hari kerja
+- **Status:** Approved & Final v1.3 — Rencana Eksekusi dan Tahap UI/UX Diperbarui
+- **Tanggal:** 10 November 2026
+- **Target rilis:** MVP beta setelah fungsi P0, UI/UX polish, dan Sprint 5 selesai
 - **Produk:** Pengembangan Qonsulin.id existing; bukan aplikasi terpisah
 
 ## 1. Ringkasan
@@ -231,48 +231,71 @@ Header publik menambah entry Member/Surat tanpa menghilangkan CTA konsultasi exi
 - Upload menolak user anonim/non-admin dan file di luar kebijakan.
 - Artikel, homepage, companions, admin existing, routing subdomain tetap lolos regression.
 
-## 13. Sprint — 25 Hari Kerja
+## 13. Sprint — Rencana Eksekusi Revisi
 
-| Sprint / hari | Fokus | Deliverable / exit |
-|---|---|---|
-| S0, H1-2 | Scope lock, wireflow, SOP, threat model | PRD sign-off; harga/benefit Premium, batas balasan, retensi, hotline, roster moderator, jam layanan diputuskan. |
-| S1, H3-7 | Security dan member foundation | Key dirotasi, upload ditutup, Auth/profile/consent berjalan, migration/RLS profile lulus member A vs B. |
-| S2, H8-11 | Tier, paket, entitlement | CRUD tier/package, katalog publik, quota Free, Premium manual/WhatsApp, integrasi CTA companions. |
-| S3, H12-18 | Letter Pool dan moderasi | Editor, submit, queue, feed approved, reply/thread, inbox, report/block/close, crisis hold lulus. |
-| S4, H19-22 | Admin, dukungan, UX | Panel admin baru, support request, label, template entitlement, navigasi, animasi CSS ringan, mobile polish. |
-| S5, H23-25 | QA dan beta | E2E/RLS/abuse/accessibility/UAT, P0/P1 fix, runbook, beta cohort terbatas. |
+Prinsip pelaksanaan: setiap P0 diselesaikan sebagai *vertical slice*: logika server/database, UI minimum yang dapat dipakai, state loading/error/empty, kontrol akses, dan test alur inti. UI/UX polish lintas modul dilakukan setelah seluruh P0 Sprint 1-4 selesai agar pengalaman klien konsisten, tanpa menunda safety atau privacy.
 
-### Rencana Hari-ke-Hari
+| Sprint | Status | Fokus | Exit gate |
+|---|---|---|---|
+| S1 | Selesai secara fungsional | Auth member, alias/avatar, consent, CMS member, RLS dasar | Fondasi member berjalan di staging; visual masih UI minimum dan masuk fase polish. |
+| S2 | Selesai secara fungsional | Tier, paket, entitlement, order manual, CTA WhatsApp | Alur paket berjalan di staging; visual masih UI minimum dan masuk fase polish. |
+| S3 | Berjalan | Letter Pool P0: submit, moderation gate, feed approved, reply, thread privacy, report/block/close | Semua data surat private/approved terlindungi dan alur member lengkap di staging. |
+| S4 | Berjalan | Operasi dan safety P0: admin moderation, payment review, crisis, escalation, audit, support request | Moderator dapat mengoperasikan queue dengan SOP, tanpa membocorkan data atau meloloskan surat crisis. |
+| S4.5 | Terjadwal setelah S3-S4 | UI/UX polish terpadu dan kesiapan presentasi klien | Seluruh modul S1-S4 konsisten, mudah dipahami, responsif, accessible, dan siap UAT. |
+| S5 | Terjadwal setelah S4.5 | QA, UAT, hardening, runbook, beta terbatas | Launch gate terpenuhi; tidak ada P0/P1 safety, privacy, payment, atau access-control terbuka. |
 
-| Hari | Hasil yang harus selesai |
-|---:|---|
-| 1 | Kickoff, PRD sign-off, role owner, keputusan harga/kuota/balasan. |
-| 2 | Wireflow, copy safety, SOP krisis, retention, threat model, test plan. |
-| 3 | Rotasi/cabut secrets lama; siapkan environment/staging dan migration plan. |
-| 4 | Perbaiki auth admin/upload; fondasi role/RLS dan audit. |
-| 5 | Supabase Auth member, registrasi/login/reset password. |
-| 6 | Profil alias/avatar/consent dan dashboard dasar. |
-| 7 | Uji RLS profile, regression auth existing, review sprint. |
-| 8 | Schema/API tier, entitlement, kuota, payment request. |
-| 9 | CMS CRUD tier/paket dan katalog harga publik. |
-| 10 | CTA WhatsApp, aktivasi manual, integrasi paket dengan companions. |
-| 11 | Test kuota/entitlement/payment audit dan review sprint. |
-| 12 | Schema surat/thread/template dan editor surat teks. |
-| 13 | Submit/draft/status, pre-moderation queue. |
-| 14 | Feed Pool approved dan detail surat anonim. |
-| 15 | Balas dengan Surat, thread privat, inbox/outbox. |
-| 16 | Report/block/close, status moderation, audit. |
-| 17 | Crisis hold/rujukan copy; abuse dan isolasi data tests. |
-| 18 | UAT moderator alur ujung-ke-ujung dan review sprint. |
-| 19 | Panel admin member/template/moderasi/laporan. |
-| 20 | Support request dan routing professional; label jelas. |
-| 21 | Payment review admin, navigation, integration CMS/companions. |
-| 22 | Mobile/accessibility, template/animasi CSS ringan, regression. |
-| 23 | E2E, RLS matrix, security/abuse/performance tests. |
-| 24 | UAT founder/moderator/professional, P0/P1 fixes, runbook. |
-| 25 | Go/no-go, deploy beta cohort kecil, monitoring dan feedback channel. |
+### Task List Aktual
 
-Asumsi: 1 full-stack developer, desain tersedia/paruh waktu, founder responsif <=24 jam, moderator/professional untuk UAT. Jika jadwal terancam, kurangi animasi/avatar/template; jangan memotong safety, moderasi, RLS, atau isolasi data.
+#### S1-S2 — Fondasi Fungsional Selesai; Masuk Backlog Polish
+
+- [x] Auth member, profil alias/avatar, consent, RLS profil, tier, paket, quota, dan order manual tersedia di staging.
+- [x] CMS admin untuk paket/member/order dan aktivasi manual dasar tersedia.
+- [ ] Polish UX Ruang Member: onboarding, copy consent, hierarchy dashboard, error/loading/empty state yang konsisten.
+- [ ] Polish UX paket/order: harga, benefit, status pembayaran, CTA WhatsApp, dan state sukses/gagal yang mudah dipahami klien.
+
+#### S3 — Letter Pool P0
+
+- [x] Skema surat, thread, template, quota server-side, submit surat, moderation gate, pool approved, dan balasan dasar tersedia.
+- [ ] Lengkapi inbox/outbox dan aturan thread privat untuk seluruh pihak yang terlibat.
+- [ ] Implementasikan report, block, dan close thread beserta efeknya terhadap interaksi berikutnya.
+- [ ] Uji RLS dan API/RPC untuk anon, member A, member B, moderator, dan service role.
+- [ ] Tambahkan state UI minimum untuk pending, approved, rejected, crisis hold, closed, blocked, loading, error, dan empty state.
+
+#### S4 — Operasi, Safety, dan Dukungan P0
+
+- [x] Queue admin dasar untuk moderasi surat dan verifikasi order tersedia.
+- [ ] Lengkapi crisis hold: panduan aman, rujukan darurat, pembatasan publikasi, dan aksi moderator sesuai SOP.
+- [ ] Tambahkan audit trail untuk moderasi surat, report/block/close, dan aktivasi/reject order.
+- [ ] Implementasikan intake "Kirim ke Konselor" lalu redirect WhatsApp Admin; jangan membangun chat realtime.
+- [ ] Lengkapi admin management untuk member, template, moderation, laporan, dan request dukungan sesuai role.
+- [ ] Jalankan regression pada CMS, artikel, companions, upload, admin login, dan navigasi existing.
+
+#### S4.5 — UI/UX Polish Terpadu dan Client-Ready
+
+- [ ] Tetapkan design direction, component rules, typography, spacing, color/status semantics, dan copy tone yang konsisten.
+- [ ] Rapikan seluruh layar member: daftar, masuk, dashboard, profil, quota/tier, paket/order, pool, detail thread, tulis, dan balas surat.
+- [ ] Rapikan seluruh layar admin: dashboard, moderation queue, review payment, data member, paket, template, dan audit state.
+- [ ] Pastikan alur safety dan payment mudah dipahami tanpa menyamarkan risiko atau menjanjikan respons klinis/darurat.
+- [ ] Selesaikan responsive mobile, keyboard navigation, form label/error, contrast, reduced motion, dan empty/loading/error state lintas modul.
+- [ ] Lakukan walkthrough bersama klien/founder untuk memvalidasi pemahaman alur sebelum UAT formal.
+
+#### Lintas Sprint — Monitoring dan Reporting Klien
+
+- [x] Jadikan PRD dan checklist sprint ini sebagai satu-satunya sumber status teknis.
+- [x] Siapkan template laporan klien yang membedakan pekerjaan selesai, sedang dikerjakan, berikutnya, risiko, dan keputusan yang dibutuhkan.
+- [ ] Tetapkan owner laporan serta ritme pengiriman bersama klien: mingguan, akhir milestone, dan saat ada blocker/risiko material.
+- [ ] Berikan demo staging hanya pada milestone yang telah lulus pengecekan internal; jangan menyebut fitur sebagai siap produksi sebelum Sprint 5 launch gate lulus.
+- [ ] Catat keputusan/approval klien untuk SOP krisis, routing konselor, copy safety, arah UI/UX, dan peserta UAT.
+- [ ] Setiap laporan menyertakan bukti yang relevan: link staging, screenshot/video singkat, daftar alur yang didemo, hasil test ringkas, dan risiko terbuka.
+- [ ] Jangan pernah menaruh service-role key, password, URL database, data member nyata, atau isi surat anonim pada laporan klien.
+
+#### S5 — QA, UAT, Hardening, dan Beta
+
+- [ ] E2E: daftar -> profil -> submit -> moderation -> pool -> reply -> moderation -> thread -> report/block/close.
+- [ ] Uji RLS/access matrix, abuse, entitlement/quota, payment state, crisis isolation, upload policy, dan regression existing.
+- [ ] UAT Founder, moderator, dan professional; perbaiki seluruh temuan P0/P1.
+- [ ] Finalisasi runbook: moderation, crisis, payment, backup/restore, incident owner, pause/revert, dan handover.
+- [ ] Aktifkan monitoring, feedback channel, beta cohort/cap volume, serta go/no-go checklist.
 
 ## 14. Testing dan QA
 
@@ -374,11 +397,11 @@ Dokumen ini mengikat setiap agen AI dan pengembang agar tidak membuat asumsi ber
    - Jangan pernah membangun antarmuka instant-messaging / socket chat sendiri di webapp.
 
 3. **Status Pelaksanaan Sprint:**
-   - **Sprint 1 (Selesai):** CMS Member, Auth, Profil Alias, Avatar Studio SVG, RLS.
-   - **Sprint 2 (Selesai):** Skema Tiering & Paket, CMS Admin Tarif, Pricing Card /layanan & /harga, pembuatan order `pending` sebelum WhatsApp, dan aktivasi manual setelah transfer diverifikasi.
-   - **Sprint 3 (Implementasi dasar; belum UAT):** Skema DB Letters, template/animasi amplop CSS 3D, Feed Kolam Surat, alur balas surat, label Community Support, serta kuota server-side. Privasi, hardening, dan pengujian pengguna masih diperlukan.
-   - **Sprint 4 (Berjalan):** Queue admin untuk moderasi surat dan verifikasi order sudah tersedia; crisis guardrail, pelaporan konten, eskalasi konselor, dan penyelarasan modul eksisting masih perlu diselesaikan.
-   - **Sprint 5 (Terjadwal):** UAT bersama Founder, Hardening, Migrasi Supabase Production, Handover.
+   - **Sprint 1-2 (Selesai secara fungsional):** Fondasi member, profil, paket, tier, dan order tersedia; seluruh layar tersebut tetap masuk cakupan UI/UX polish S4.5.
+   - **Sprint 3 (Berjalan):** Fitur dasar Letter Pool tersedia; privacy thread, report/block/close, state UI lengkap, dan test RLS/API masih perlu dituntaskan.
+   - **Sprint 4 (Berjalan):** Queue admin dasar tersedia; crisis guardrail, audit, pelaporan, eskalasi konselor, support request, dan regression modul existing masih perlu diselesaikan.
+   - **Sprint 4.5 (Terjadwal):** UI/UX polish lintas modul setelah seluruh P0 Sprint 1-4 selesai dan sebelum QA/UAT formal.
+   - **Sprint 5 (Terjadwal):** QA, UAT, hardening, beta terbatas, runbook, monitoring, dan handover.
 
 ## 19. Definition of Done
 
