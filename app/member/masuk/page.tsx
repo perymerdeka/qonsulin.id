@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Header, Footer } from "@/components/PublicChrome";
+import { ShieldCheck } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
-import { HeartHandshake, ShieldCheck, LogIn, UserPlus } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -12,8 +11,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setErrorMsg("");
 
     const supabase = getSupabaseClient();
@@ -30,7 +29,9 @@ export default function LoginPage() {
       });
 
       if (error) {
-        setErrorMsg("Email atau kata sandi belum sesuai. Silakan periksa kembali.");
+        setErrorMsg(error.message.toLowerCase().includes("email not confirmed")
+          ? "Email belum dikonfirmasi. Hubungi admin jika masih belum bisa masuk."
+          : "Email atau kata sandi belum sesuai. Silakan periksa kembali.");
         return;
       }
 
@@ -39,72 +40,47 @@ export default function LoginPage() {
       } else {
         setErrorMsg("Sesi login belum aktif. Coba beberapa saat lagi.");
       }
-    } catch (err: any) {
-      setErrorMsg(err?.message || "Terjadi kendala saat masuk.");
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "Terjadi kendala saat masuk.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <main className="site-shell">
-      <Header active="/member" />
-      <section className="section" style={{ maxWidth: 440, margin: "0 auto", padding: "3rem 1.25rem" }}>
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <span className="pill" style={{ display: "inline-flex", gap: "0.4rem", alignItems: "center" }}>
-            <HeartHandshake size={14} /> Ruang Member
-          </span>
-          <h1 style={{ fontSize: "1.75rem", color: "var(--color-ink)", marginTop: "0.5rem" }}>
-            Selamat Datang Kembali
-          </h1>
-          <p style={{ color: "var(--color-muted)", fontSize: "0.9rem" }}>
-            Masuk untuk membuka kotak surat dan melanjutkan ceritamu.
-          </p>
+    <main className="member-login">
+      <div className="member-login-card">
+        <div className="member-login-brand">
+          <Link href="/" className="member-login-logo" aria-label="QONSULIN.ID Beranda">
+            <span className="member-brand-mark">Q</span> QONSULIN.ID
+          </Link>
+          <h1>RUANG MEMBER</h1>
+          <p>Masuk untuk membuka kotak surat dan melanjutkan ceritamu.</p>
         </div>
 
-        <form onSubmit={handleLogin} className="card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem", padding: "1.75rem" }}>
-          <label className="field">
-            <span>Email Terdaftar</span>
-            <input
-              type="email"
-              required
-              placeholder="kamu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-
-          <label className="field">
-            <span>Kata Sandi</span>
-            <input
-              type="password"
-              required
-              placeholder="Kata sandi akunmu"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
-
-          {errorMsg && (
-            <div style={{ padding: "0.6rem 0.8rem", background: "#fee2e2", color: "#991b1b", borderRadius: "6px", fontSize: "0.85rem" }}>
-              {errorMsg}
-            </div>
-          )}
-
-          <button type="submit" disabled={loading} className="btn btn-primary" style={{ justifyContent: "center", display: "inline-flex", gap: "0.4rem", alignItems: "center" }}>
-            <LogIn size={16} /> {loading ? "Memverifikasi..." : "Masuk ke Ruang Member"}
-          </button>
-
-          <div style={{ textAlign: "center", fontSize: "0.85rem", color: "var(--color-muted)", paddingTop: "0.5rem" }}>
-            Belum punya akun? <Link href="/member/daftar" style={{ color: "var(--color-brand-strong)", fontWeight: 700 }}>Daftar di sini</Link>
-          </div>
-        </form>
-
-        <div style={{ textAlign: "center", marginTop: "1.5rem", color: "var(--color-muted)", fontSize: "0.8rem", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.4rem" }}>
-          <ShieldCheck size={14} /> Privasi dan riwayat ceritamu terlindungi
+        <div className="member-login-panel">
+          <form onSubmit={handleLogin}>
+            <label className="field">
+              <span>Email Terdaftar</span>
+              <input type="email" required autoComplete="email" placeholder="kamu@email.com" value={email} onChange={(event) => setEmail(event.target.value)} />
+            </label>
+            <label className="field">
+              <span>Kata Sandi</span>
+              <input type="password" required autoComplete="current-password" placeholder="Kata sandi akunmu" value={password} onChange={(event) => setPassword(event.target.value)} />
+            </label>
+            {errorMsg && <p className="member-login-error" role="alert">{errorMsg}</p>}
+            <button className="btn btn-primary" type="submit" disabled={loading}>
+              {loading ? "Memverifikasi..." : "Masuk ke Ruang Member"}
+            </button>
+          </form>
+          <div className="member-login-note"><ShieldCheck size={16} /> Privasi dan riwayat ceritamu terlindungi</div>
         </div>
-      </section>
-      <Footer />
+
+        <p className="member-login-links">
+          Belum punya akun? <Link href="/member/daftar">Daftar di sini</Link>
+        </p>
+        <p className="member-login-back"><Link href="/">Kembali ke Website Qonsulin.id</Link></p>
+      </div>
     </main>
   );
 }

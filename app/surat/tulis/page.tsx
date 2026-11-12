@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Header, Footer } from "@/components/PublicChrome";
 import { getSupabaseClient } from "@/lib/supabase";
 import { getCurrentMemberProfile } from "@/lib/member-auth";
@@ -22,6 +22,7 @@ const TOPIC_OPTIONS = [
 
 export default function WriteLetterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [quota, setQuota] = useState<LetterQuota | null>(null);
   const [templates, setTemplates] = useState<LetterTemplate[]>(defaultTemplates);
@@ -53,6 +54,10 @@ export default function WriteLetterPage() {
         if (!active) return;
         setQuota(q);
         setTemplates(tpls);
+        const requestedTemplate = searchParams.get("template");
+        if (requestedTemplate && tpls.some((template) => template.code === requestedTemplate)) {
+          setSelectedTemplate(requestedTemplate);
+        }
       } catch (err) {
         console.warn("Failed to load write page:", err);
       } finally {
@@ -63,7 +68,7 @@ export default function WriteLetterPage() {
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
