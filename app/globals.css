@@ -1385,3 +1385,269 @@ td { padding: 1rem; border-top: 1px solid oklch(92% 0.01 260); font-size: var(--
 .assigned-box { display: flex; align-items: flex-start; gap: .6rem; padding: .6rem .8rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: .6rem; margin: .3rem 0; }
 .dispatch-controls { display: grid; gap: .35rem; padding: .75rem; background: #fdfbf7; border: 1px dashed #d97706; border-radius: .6rem; margin: .4rem 0; }
 .dispatch-controls input, .dispatch-controls select { font-size: .82rem; padding: .35rem .6rem; border: 1px solid #d1d5db; border-radius: .4rem; background: white; }
+/* ==========================================================================
+   Letterhead & Realistic Letter Paper Styles (Dashboard Member)
+   ========================================================================== */
+.letter-paper-realistic {
+  position: relative;
+  background-color: #fbf7ee;
+  border: 1px solid #d9ccb2;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(48, 37, 18, 0.08), inset 0 0 40px rgba(214, 199, 167, 0.2);
+  padding: 1.5rem 1.65rem 1.65rem;
+  color: #3b2a1a;
+  font-family: Georgia, 'Times New Roman', serif;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.letter-paper-realistic.is-compact {
+  padding: 1rem 1.15rem 1.15rem;
+}
+.letter-paper-realistic.paper-vintage_parchment {
+  background-color: #fbf6ec;
+  border-color: #d6c7a7;
+  color: #451a03;
+}
+.letter-paper-realistic.paper-warm_pastel {
+  background-color: #fdf6f0;
+  border-color: #fed7aa;
+  color: #3f251d;
+  font-family: 'Nunito', var(--font-body, sans-serif);
+}
+.letter-paper-realistic.paper-night_sky {
+  background-color: #1a2538;
+  border-color: #374763;
+  color: #f1f5f9;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  font-family: 'Nunito', var(--font-body, sans-serif);
+}
+.letter-paper-realistic.paper-botanical_sage {
+  background-color: #f1f7f1;
+  border-color: #bcd6be;
+  color: #193f23;
+}
+
+/* Kop Surat (Header) */
+.letterhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid currentColor;
+  padding-bottom: 0.65rem;
+  margin-bottom: 0.95rem;
+  opacity: 0.9;
+}
+.letterhead::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: currentColor;
+  opacity: 0.15;
+}
+.letterhead-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.letterhead-seal {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #fff3bf;
+  background: #991b1b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  font-family: serif;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+}
+.paper-warm_pastel .letterhead-seal { background: #b45309; }
+.paper-night_sky .letterhead-seal { background: #4338ca; }
+.paper-botanical_sage .letterhead-seal { background: #15803d; }
+.letterhead-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+.letterhead-sub {
+  font-size: 0.65rem;
+  opacity: 0.7;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.letterhead-date {
+  font-size: 0.72rem;
+  font-style: italic;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+/* Letter Content Body */
+.letter-body-text {
+  font-size: 0.98rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.letter-paper-realistic:not(.is-full) .letter-body-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-style: italic;
+}
+
+/* Letter Sign-off Footer */
+.letter-signoff {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 1.1rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed currentColor;
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+.letter-signoff-sender {
+  font-weight: 700;
+}
+.letter-signoff-quote {
+  font-size: 0.7rem;
+  font-style: italic;
+}
+
+/* Interactive Letter Sheet Dialog Modal */
+.member-letter-sheet-dialog {
+  position: relative;
+  width: min(100%, 780px);
+  max-height: min(92dvh, 920px);
+  padding: 1.8rem;
+  overflow-y: auto;
+  border-radius: 1rem;
+  background: #fbfbfb;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.32);
+}
+.member-letter-sheet-dialog .member-thread-item {
+  margin-bottom: 1.5rem;
+}
+.member-letter-sheet-dialog .member-letter-meta {
+  margin-bottom: 0.5rem;
+}
+.member-sheet-reply-box {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 0.85rem;
+}
+.member-sheet-reply-box h4 {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #262626;
+}
+.member-sheet-reply-box textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 0.85rem 1rem;
+  border: 1px solid #dcdcdc;
+  border-radius: 0.6rem;
+  font-family: inherit;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+}
+.member-sheet-reply-box textarea:focus {
+  border-color: var(--color-brand);
+}
+.member-sheet-reply-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+}
+/* Realistic Letter Envelope & Letterhead Preview in Stage */
+.member-envelope-art {
+  overflow: visible;
+}
+.member-envelope-letterhead-preview {
+  position: absolute;
+  top: 45px;
+  width: 78%;
+  background: #fbf7ee;
+  border: 1px solid #d9ccb2;
+  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+  box-shadow: 0 4px 12px rgba(48, 37, 18, 0.12);
+  z-index: 2;
+  font-family: Georgia, serif;
+}
+.envelope-warm_pastel .member-envelope-letterhead-preview {
+  background: #fdf6f0;
+  border-color: #fed7aa;
+}
+.envelope-night_sky .member-envelope-letterhead-preview {
+  background: #1a2538;
+  border-color: #374763;
+  color: #f1f5f9;
+}
+.envelope-botanical_sage .member-envelope-letterhead-preview {
+  background: #f1f7f1;
+  border-color: #bcd6be;
+}
+.member-envelope-letterhead-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.4rem;
+  opacity: 0.85;
+}
+.member-envelope-letterhead-header span {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.member-envelope-letterhead-body {
+  font-size: 0.72rem;
+  font-style: italic;
+  opacity: 0.75;
+  line-height: 1.4;
+}
+/* Realistic letter paper inside envelope stage preview */
+.letter-paper-realistic {
+  background: linear-gradient(180deg, #fffdf7 0%, #fbf7ee 70%, #f5eede 100%);
+  border-radius: .5rem;
+  border: 1px solid #d9ccb2;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.letterhead {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: .5rem .75rem;
+}
+.letterhead-seal {
+  background: var(--color-brand, #b45309);
+  color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  line-height: 1;
+}
+.letterhead-title { font-weight: 800; color: #5f4d35; }
+.letterhead-sub { color: #8a765e; font-size: .55rem; }
+.letterhead-date { text-align: right; color: #8a765e; opacity: .85; }
+.letter-body-text { color: #6b5b42; font-style: italic; }
+
