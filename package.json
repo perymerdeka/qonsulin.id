@@ -20,7 +20,8 @@
     "supabase:local:start": "supabase start",
     "supabase:local:stop": "supabase stop",
     "supabase:local:status": "supabase status",
-    "supabase:local:reset": "supabase db reset"
+    "supabase:local:reset": "supabase db reset",
+    "test:sprint4:staging": "node scripts/test-sprint4-staging.mjs"
   },
   "dependencies": {
     "@mdxeditor/editor": "^4.0.4",

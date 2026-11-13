@@ -1266,3 +1266,122 @@ td { padding: 1rem; border-top: 1px solid oklch(92% 0.01 260); font-size: var(--
 .member-account-mini small { font-size: .74rem; }
 @media (max-width: 1240px) { .member-app-shell { grid-template-columns: 252px minmax(0, 1fr); } }
 @media (max-width: 1080px) { .member-app-shell { grid-template-columns: 1fr; } .member-sidebar { height: auto; min-height: 0; overflow: visible; } .member-navigation { flex: none; } .member-sidebar-bottom { margin-top: 0; } }
+
+/* Your Letter separates template selection from the writing form. */
+.member-send-mode {
+  display: grid;
+  grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr);
+  gap: .65rem;
+  margin-bottom: 1rem;
+}
+.member-send-mode button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  min-height: 48px;
+  padding: .7rem .85rem;
+  border: 1px solid #e5e5e5;
+  border-radius: .7rem;
+  background: #fff;
+  color: #9999a1;
+  font: inherit;
+  font-size: .88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.member-send-mode button.is-selected {
+  border-color: transparent;
+  background: #f5f5f5;
+  color: #191919;
+}
+.member-send-mode button:disabled { cursor: not-allowed; opacity: .68; }
+.member-send-mode small { color: inherit; font-size: .68rem; font-weight: 650; }
+.member-template-stage { position: relative; padding: .25rem 78px 0 0; }
+.member-template-stage .member-envelope-art { min-height: 362px; margin: .3rem 0 1.15rem; }
+.member-template-stage .member-envelope-letter {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 70%;
+  min-height: 145px;
+  place-items: start;
+  padding: 1.15rem 1.3rem;
+  color: #84745f;
+  font-size: .94rem;
+}
+.member-template-stage .member-template-picker { top: .6rem; }
+.member-write-button { margin-top: .1rem; }
+.member-compose-dialog {
+  width: min(100% - 2rem, 680px);
+  max-height: min(90dvh, 900px);
+  padding: 2rem;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 30px 80px rgb(0 0 0 / .28);
+}
+.member-compose-dialog::backdrop { background: rgb(22 20 15 / .48); }
+.member-compose-dialog h2 { margin: .35rem 0 .4rem; font-size: 1.5rem; }
+.member-compose-dialog-copy { margin: 0 0 1rem; color: var(--color-muted); font-size: .88rem; }
+.member-compose-envelope { min-height: 330px; margin: 0 0 1rem; }
+.member-compose-envelope textarea {
+  position: relative;
+  z-index: 2;
+  width: 70%;
+  min-height: 150px;
+  padding: 1.15rem 1.3rem;
+  resize: vertical;
+  border: 0;
+  outline: 0;
+  background: #fffdf7;
+  color: #5f4d35;
+  box-shadow: 0 12px 20px rgb(82 61 23 / .13);
+  font-family: Georgia, serif;
+  font-size: .94rem;
+  font-style: italic;
+  line-height: 1.65;
+}
+.member-compose-envelope textarea::placeholder { color: #84745f; opacity: 1; }
+.member-compose-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.member-compose-actions > span { color: var(--color-muted); font-size: .76rem; }
+.member-compose-actions .btn { display: inline-flex; align-items: center; gap: .45rem; }
+@media (max-width: 560px) {
+  .member-send-mode { grid-template-columns: 1fr; }
+  .member-template-stage { padding-right: 56px; }
+  .member-template-stage .member-envelope-art { min-height: 260px; }
+  .member-template-stage .member-envelope-letter { width: 76%; min-height: 100px; padding: .8rem; }
+  .member-compose-dialog { padding: 1.25rem; }
+  .member-compose-envelope { min-height: 260px; }
+  .member-compose-envelope textarea { width: 76%; min-height: 108px; padding: .8rem; }
+}
+
+/* Sprint 4: safe support intake and moderator operations. */
+.sprint4-dialog { color: var(--color-ink); }
+.sprint4-dialog > svg { color: #b45309; margin-bottom: .45rem; }
+.sprint4-dialog p, .sprint4-dialog li { color: var(--color-muted); line-height: 1.6; }
+.sprint4-dialog ul { padding-left: 1.2rem; margin: 1rem 0 1.35rem; }
+.sprint4-dialog li + li { margin-top: .5rem; }
+.sprint4-form { display: grid; gap: .9rem; margin-top: 1.15rem; }
+.sprint4-form > p { margin: 0; font-size: .86rem; }
+.sprint4-consent { display: flex; align-items: flex-start; gap: .6rem; color: var(--color-muted); font-size: .86rem; line-height: 1.5; }
+.sprint4-consent input { width: auto; margin-top: .25rem; }
+.member-send-mode .member-special-destination { border-color: #e5e5e5; background: white; color: #45454b; }
+.member-send-mode .member-special-destination:hover { border-color: #bdbdc4; background: #fafafa; }
+.admin-operations-grid { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.admin-operations-grid h2 { font-size: 1rem; margin: 0 0 1rem; }
+.admin-audit-card { grid-column: 1 / -1; }
+.operation-list { display: grid; gap: .7rem; }
+.operation-list article { display: grid; gap: .28rem; padding: .85rem 0; border-top: 1px solid #ececf0; }
+.operation-list article:first-child { border-top: 0; padding-top: 0; }
+.operation-list strong { font-size: .9rem; text-transform: capitalize; }
+.operation-list span, .operation-list small { color: var(--color-muted); font-size: .8rem; }
+.operation-list select { width: min(100%, 190px); margin-top: .3rem; }
+@media (max-width: 760px) { .admin-operations-grid { grid-template-columns: 1fr; } .admin-audit-card { grid-column: auto; } }
+/* Sprint 4: Admin distribution to counselor & mentor */
+.support-dispatch-card { display: grid; gap: .5rem; padding: 1rem 0; border-top: 1px solid #ececf0; }
+.support-dispatch-card:first-child { border-top: 0; padding-top: 0; }
+.assigned-box { display: flex; align-items: flex-start; gap: .6rem; padding: .6rem .8rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: .6rem; margin: .3rem 0; }
+.dispatch-controls { display: grid; gap: .35rem; padding: .75rem; background: #fdfbf7; border: 1px dashed #d97706; border-radius: .6rem; margin: .4rem 0; }
+.dispatch-controls input, .dispatch-controls select { font-size: .82rem; padding: .35rem .6rem; border: 1px solid #d1d5db; border-radius: .4rem; background: white; }

@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
     supabase.from("consultation_packages").select("*").order("sort_order", { ascending: true }),
     supabase.from("member_profiles").select("*").order("created_at", { ascending: false }),
     supabase.from("package_orders").select("*").order("created_at", { ascending: false }).limit(100),
-    supabase.from("letters").select("id, thread_id, sender_id, is_opening, reply_type, title, content, template_code, moderation_status, created_at, reviewed_at, review_note").order("created_at", { ascending: false }).limit(100)
+    supabase.from("letters").select("id, thread_id, sender_id, is_opening, reply_type, title, content, template_code, moderation_status, created_at, reviewed_at, review_note, letter_threads!inner(delivery_mode)").eq("letter_threads.delivery_mode", "public").order("created_at", { ascending: false }).limit(100)
   ]);
 
   // Jika adminClient gagal karena Invalid API key (biasanya karena SUPABASE_SERVICE_ROLE_KEY di hosting Vercel belum diperbarui),
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
     supabase.from("consultation_packages").select("*").order("sort_order", { ascending: true }),
     supabase.from("member_profiles").select("*").order("created_at", { ascending: false }),
     supabase.from("package_orders").select("*").order("created_at", { ascending: false }).limit(100),
-    supabase.from("letters").select("id, thread_id, sender_id, is_opening, reply_type, title, content, template_code, moderation_status, created_at, reviewed_at, review_note").order("created_at", { ascending: false }).limit(100)
+    supabase.from("letters").select("id, thread_id, sender_id, is_opening, reply_type, title, content, template_code, moderation_status, created_at, reviewed_at, review_note, letter_threads!inner(delivery_mode)").eq("letter_threads.delivery_mode", "public").order("created_at", { ascending: false }).limit(100)
     ]);
   }
 

@@ -17,7 +17,7 @@ export type LetterTemplate = {
 export type LetterItem = {
   id: string;
   thread_id: string;
-  sender_id: string;
+  sender_id: string | null;
   is_opening: boolean;
   reply_type: ReplyType;
   template_code: string;
@@ -25,6 +25,7 @@ export type LetterItem = {
   content: string;
   moderation_status: "pending" | "approved" | "rejected" | "crisis_hold";
   created_at: string;
+  operator_reply?: boolean;
   author_alias?: string;
   author_avatar?: any;
   topic?: string;
@@ -34,6 +35,9 @@ export type LetterThreadDetail = {
   id: string;
   topic: string;
   status: "open" | "closed" | "blocked" | "flagged";
+  delivery_mode: "public" | "special";
+  special_destination?: "mentor" | "counselor" | null;
+  handling_status?: "waiting" | "assigned" | "in_progress" | "completed" | "needs_attention" | null;
   created_at: string;
   opening_letter: LetterItem;
   replies: LetterItem[];
@@ -150,7 +154,8 @@ async function attachAuthorDetails(supabase: any, items: any[], topicByThread = 
       moderation_status: item.moderation_status,
       created_at: item.created_at,
       topic: item.letter_threads?.topic || topicByThread.get(item.thread_id) || "Luapan Hati",
-      author_alias: author?.alias || "Kawan Anonim",
+      operator_reply: Boolean(item.operator_reply),
+      author_alias: item.operator_reply ? "Tim Qonsulin" : author?.alias || "Kawan Anonim",
       author_avatar: author?.avatar_config || { mood: "smile", bg: "sky" }
     } as LetterItem;
   });
@@ -166,10 +171,11 @@ export async function getPoolLetters(): Promise<LetterItem[]> {
       .select(`
         id, thread_id, sender_id, is_opening, reply_type, template_code,
         title, content, moderation_status, created_at,
-        letter_threads ( topic, status )
+        letter_threads!inner ( topic, status, delivery_mode )
       `)
       .eq("is_opening", true)
       .eq("moderation_status", "approved")
+      .eq("letter_threads.delivery_mode", "public")
       .order("created_at", { ascending: false })
       .limit(30);
 
@@ -190,14 +196,14 @@ export async function getThreadDetail(threadId: string): Promise<LetterThreadDet
 
     const { data: thread, error: threadErr } = await supabase
       .from("letter_threads")
-      .select("id, topic, status, created_at")
+      .select("id, topic, status, delivery_mode, special_destination, handling_status, created_at")
       .eq("id", threadId)
       .maybeSingle();
     if (threadErr || !thread) return null;
 
     const { data: letters, error: lettersErr } = await supabase
       .from("letters")
-      .select("id, thread_id, sender_id, is_opening, reply_type, template_code, title, content, moderation_status, created_at")
+      .select("id, thread_id, sender_id, is_opening, operator_reply, reply_type, template_code, title, content, moderation_status, created_at")
       .eq("thread_id", threadId)
       .eq("moderation_status", "approved")
       .order("created_at", { ascending: true });
@@ -206,14 +212,17 @@ export async function getThreadDetail(threadId: string): Promise<LetterThreadDet
     const mapped = await attachAuthorDetails(supabase, letters, new Map([[thread.id, thread.topic]]));
     const opening = mapped.find((letter) => letter.is_opening) || mapped[0];
     if (!opening) return null;
-
+    const replies = mapped.filter((letter) => !letter.is_opening);
     return {
       id: thread.id,
       topic: thread.topic,
       status: thread.status,
+      delivery_mode: thread.delivery_mode || "public",
+      special_destination: thread.special_destination,
+      handling_status: thread.handling_status,
       created_at: thread.created_at,
       opening_letter: opening,
-      replies: mapped.filter((letter) => !letter.is_opening)
+      replies
     };
   } catch {
     return null;
@@ -223,6 +232,9 @@ export type MemberThreadSummary = {
   id: string;
   topic: string;
   status: "open" | "closed" | "blocked" | "flagged";
+  delivery_mode: "public" | "special";
+  special_destination?: "mentor" | "counselor" | null;
+  handling_status?: "waiting" | "assigned" | "in_progress" | "completed" | "needs_attention" | null;
   created_at: string;
   moderation_status: "pending" | "approved" | "rejected" | "crisis_hold";
   is_opening: boolean;
@@ -239,60 +251,66 @@ export async function getMemberLetterThreads(scope: "inbox" | "outbox"): Promise
     const userId = sessionData?.session?.user?.id;
     if (!userId) return [];
 
-    let rows: any[] = [];
     if (scope === "outbox") {
       const { data, error } = await supabase
         .from("letters")
-        .select("id, thread_id, sender_id, is_opening, title, content, moderation_status, created_at, letter_threads(topic, status)")
+        .select("id, thread_id, sender_id, is_opening, operator_reply, title, content, moderation_status, created_at, letter_threads(topic, status, delivery_mode, special_destination, handling_status)")
         .eq("sender_id", userId)
         .eq("is_opening", true)
         .order("created_at", { ascending: false })
         .limit(60);
       if (error || !data) return [];
-      rows = data;
-    } else {
-      const { data: myThreads, error: threadErr } = await supabase
-        .from("letter_threads")
-        .select("id")
-        .eq("author_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(60);
-      if (threadErr || !myThreads) return [];
-      const threadIds = myThreads.map((thread: any) => thread.id);
-      if (threadIds.length === 0) return [];
-
-      const { data: replies, error } = await supabase
-        .from("letters")
-        .select("id, thread_id, sender_id, is_opening, title, content, moderation_status, created_at, letter_threads(topic, status)")
-        .in("thread_id", threadIds)
-        .eq("is_opening", false)
-        .eq("moderation_status", "approved")
-        .neq("sender_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(60);
-      if (error || !replies) return [];
-      rows = replies;
+      return data.map((row: any) => ({
+        id: row.thread_id,
+        topic: row.letter_threads?.topic || "Luapan Hati",
+        status: row.letter_threads?.status || "open",
+        delivery_mode: row.letter_threads?.delivery_mode || "public",
+        special_destination: row.letter_threads?.special_destination,
+        handling_status: row.letter_threads?.handling_status,
+        created_at: row.created_at,
+        moderation_status: row.moderation_status,
+        is_opening: true,
+        title: row.title,
+        preview: row.content
+      }));
     }
 
-    const scoped = rows;
+    const { data: myThreads, error: threadErr } = await supabase
+      .from("letter_threads")
+      .select("id")
+      .eq("author_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(60);
+    if (threadErr || !myThreads || myThreads.length === 0) return [];
+    const threadIds = myThreads.map((thread: any) => thread.id);
 
-    const senderIds = [...new Set(scoped.map((row: any) => row.sender_id))];
-    const { data: profiles } = senderIds.length
-      ? await supabase.from("member_profiles").select("id, alias").in("id", senderIds)
-      : { data: [] };
+    const { data: replyRows, error: repliesError } = await supabase
+      .from("letters")
+      .select("id, thread_id, sender_id, is_opening, operator_reply, title, content, moderation_status, created_at, letter_threads(topic, status, delivery_mode, special_destination, handling_status)")
+      .in("thread_id", threadIds)
+      .eq("is_opening", false)
+      .eq("moderation_status", "approved")
+      .order("created_at", { ascending: false })
+      .limit(60);
+    if (repliesError || !replyRows) return [];
+    const senderIds = [...new Set(replyRows.map((row: any) => row.sender_id).filter(Boolean))];
+    const { data: profiles } = senderIds.length ? await supabase.from("member_profiles").select("id, alias").in("id", senderIds) : { data: [] };
     const aliasById = new Map<string, string>((profiles || []).map((profile: any) => [profile.id, profile.alias]));
-
-    return scoped.map((row: any) => ({
+    const communityReplies: MemberThreadSummary[] = replyRows.map((row: any) => ({
       id: row.thread_id,
       topic: row.letter_threads?.topic || "Luapan Hati",
       status: row.letter_threads?.status || "open",
+      delivery_mode: row.letter_threads?.delivery_mode || "public",
+      special_destination: row.letter_threads?.special_destination,
+      handling_status: row.letter_threads?.handling_status,
       created_at: row.created_at,
       moderation_status: row.moderation_status,
-      is_opening: row.is_opening,
+      is_opening: false,
       title: row.title,
       preview: row.content,
-      author_alias: aliasById.get(row.sender_id) || "Kawan Anonim"
+      author_alias: row.operator_reply ? "Tim Qonsulin" : aliasById.get(row.sender_id) || "Kawan Anonim"
     }));
+    return communityReplies.sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime());
   } catch {
     return [];
   }

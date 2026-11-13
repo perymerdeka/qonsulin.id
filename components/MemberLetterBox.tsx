@@ -22,8 +22,8 @@ const scopeCopy: Record<Scope, {
   inbox: {
     title: "Surat Masuk",
     short: "Balasan yang kamu terima",
-    what: "Balasan dari kawan cerita pada surat yang kamu tulis.",
-    how: "Surat ini muncul di sini setelah moderator menyetujuinya. Kamu bisa membalas lagi atau menutup percakapan.",
+    what: "Balasan komunitas atau Tim Qonsulin pada surat yang kamu tulis.",
+    how: "Balasan komunitas muncul setelah moderasi. Balasan surat privat hanya dikirim oleh admin Qonsulin.",
     emptyTitle: "Belum ada balasan masuk",
     emptyBody: "Kalau suratmu sudah disetujui dan ada kawan yang membalas, balasannya akan tampil di sini.",
     itemLabel: "Balasan masuk"
@@ -31,11 +31,11 @@ const scopeCopy: Record<Scope, {
   outbox: {
     title: "Surat Keluar",
     short: "Surat yang kamu kirim",
-    what: "Surat pembuka yang kamu tulis dan kirim ke Kolam Surat.",
-    how: "Statusnya menunjukkan apakah surat masih menunggu moderator, sudah tampil di kolam, ditolak, atau ditahan untuk pemeriksaan safety.",
+    what: "Surat publik dan surat privat yang kamu kirim.",
+    how: "Surat publik memakai status moderasi. Surat tujuan khusus memakai status penanganan admin dan tidak tampil di Kolam Surat.",
     emptyTitle: "Belum ada surat terkirim",
-    emptyBody: "Surat pembuka yang kamu tulis akan tercatat di sini beserta status moderasinya.",
-    itemLabel: "Surat pembuka"
+    emptyBody: "Surat publik maupun surat privat yang kamu tulis akan tercatat di sini.",
+    itemLabel: "Surat terkirim"
   }
 };
 
@@ -52,6 +52,13 @@ function threadBadge(status: MemberThreadSummary["status"]) {
   if (status === "blocked") return { label: "Diblokir", bg: "#fee2e2", color: "#991b1b" };
   if (status === "flagged") return { label: "Ditinjau Moderator", bg: "#fef9c3", color: "#854d0e" };
   return null;
+}
+
+function specialHandlingBadge(status: MemberThreadSummary["handling_status"]) {
+  const labels = { waiting: "Menunggu Disposisi", assigned: "Sudah Ditugaskan", in_progress: "Sedang Diproses", completed: "Selesai", needs_attention: "Perlu Perhatian" } as const;
+  const tones = { waiting: ["#fef3c7", "#92400e"], assigned: ["#dbeafe", "#1d4ed8"], in_progress: ["#e0e7ff", "#3730a3"], completed: ["#dcfce7", "#166534"], needs_attention: ["#ffedd5", "#9a3412"] } as const;
+  const current = status || "waiting";
+  return { label: labels[current], bg: tones[current][0], color: tones[current][1] };
 }
 
 export function MemberLetterBox({ scope }: { scope: Scope }) {
@@ -200,7 +207,7 @@ export function MemberLetterBox({ scope }: { scope: Scope }) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {items.map((thread) => {
-              const mod = moderationBadge(thread.moderation_status);
+              const mod = thread.delivery_mode === "special" ? specialHandlingBadge(thread.handling_status) : moderationBadge(thread.moderation_status);
               const thr = threadBadge(thread.status);
               return (
                 <div key={thread.id} className="card" style={{ padding: "1.25rem 1.5rem" }}>
@@ -208,7 +215,7 @@ export function MemberLetterBox({ scope }: { scope: Scope }) {
                     <div style={{ minWidth: 220, flex: 1 }}>
                       <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap", marginBottom: "0.5rem" }}>
                         <span className="pill" style={{ fontSize: "0.72rem", background: "#e0e7ff", color: "#3730a3" }}>
-                          {copy.itemLabel}
+                          {thread.delivery_mode === "special" ? (scope === "inbox" ? "Balasan surat privat" : "Surat privat") : copy.itemLabel}
                         </span>
                         <span className="pill muted" style={{ fontSize: "0.72rem" }}>{thread.topic}</span>
                         {mod && (
@@ -249,7 +256,7 @@ export function MemberLetterBox({ scope }: { scope: Scope }) {
                       >
                         Buka Percakapan <ArrowRight size={13} />
                       </Link>
-                      {thread.status === "open" && (
+                      {thread.status === "open" && thread.delivery_mode === "public" && (
                         <Link
                           href={`/surat/${thread.id}/balas`}
                           className="btn btn-primary"

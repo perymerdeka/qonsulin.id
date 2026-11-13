@@ -9,6 +9,7 @@ import { getCurrentMemberProfile } from "@/lib/member-auth";
 import { MemberProfile } from "@/lib/member";
 import { getActiveTemplates, getMemberQuota, LetterTemplate, LetterQuota, defaultTemplates } from "@/lib/letters";
 import { LetterEnvelopeView } from "@/components/LetterEnvelopeView";
+import { CrisisGuidance } from "@/components/CrisisGuidance";
 import { Mail, ArrowLeft, Send, Sparkles, ShieldAlert, CheckCircle2, Lock } from "lucide-react";
 
 const TOPIC_OPTIONS = [
@@ -37,6 +38,7 @@ export default function WriteLetterPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+  const [showCrisisGuidance, setShowCrisisGuidance] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -111,6 +113,7 @@ export default function WriteLetterPage() {
       }
 
       if (data.is_crisis_hold) {
+        setShowCrisisGuidance(true);
         setSuccessMsg("Suratmu telah tersimpan dan ditahan untuk pemeriksaan khusus. Surat belum dipublikasikan. Layanan ini bukan layanan darurat dan tidak menjamin respons segera.");
       } else {
         setSuccessMsg("Suratmu tersimpan dan menunggu moderasi admin. Setelah disetujui, surat akan tampil di Kolam Surat. Kuota bulan ini sudah diperbarui.");
@@ -329,6 +332,7 @@ export default function WriteLetterPage() {
           </div>
         </form>
       </section>
+      <CrisisGuidance open={showCrisisGuidance} onClose={() => setShowCrisisGuidance(false)} />
       <Footer />
     </main>
   );

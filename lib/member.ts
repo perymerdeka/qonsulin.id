@@ -8,6 +8,7 @@ export type AvatarConfig = {
 };
 
 export type MemberRole = "member" | "moderator" | "admin";
+export type StaffRole = "admin" | "moderator";
 export type MemberTier = "free" | "premium";
 
 export type MemberProfile = {

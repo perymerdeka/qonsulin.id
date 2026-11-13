@@ -10,8 +10,10 @@ import "@uiw/react-md-editor/markdown-editor.css";
 import "@uiw/react-markdown-preview/markdown.css";
 import Image from "next/image";
 import { ConsultationPackage, formatRupiah } from "@/lib/packages";
-import { MemberProfile } from "@/lib/member";
+import { MemberProfile, StaffRole } from "@/lib/member";
 import { AdminReviewPanel } from "@/components/AdminReviewPanel";
+import { AdminOperationsPanel } from "@/components/AdminOperationsPanel";
+import { AdminTemplatesPanel } from "@/components/AdminTemplatesPanel";
 import { AdminPagination } from "@/components/AdminPagination";
 import type { PackageOrder } from "@/lib/packages";
 import type { LetterItem } from "@/lib/letters";
@@ -19,7 +21,7 @@ import type { LetterItem } from "@/lib/letters";
 const RichTextEditor = dynamic(() => import("./RichTextEditor"), { ssr: false, loading: () => <div style={{ padding: "20px", border: "1px solid #ddd", background: "white", borderRadius: "8px", marginTop: "10px" }}>Memuat Editor...</div> });
 
 
-type Section = "dashboard" | "posts" | "activities" | "testimonials" | "lead-magnets" | "galleries" | "streaming" | "companions" | "packages" | "members" | "orders" | "letters" | "settings";
+type Section = "dashboard" | "posts" | "activities" | "testimonials" | "lead-magnets" | "galleries" | "streaming" | "companions" | "packages" | "members" | "orders" | "letters" | "templates" | "operations" | "settings";
 type Mode = "list" | "new" | "edit";
 type AnyRow = BlogPost | ActivityItem | Testimonial | LeadMagnet | GalleryEvent | StreamingVideo | CompanionProfile | ConsultationPackage | MemberProfile;
 type Store = {
@@ -43,6 +45,20 @@ type CmsApiResponse = {
   row?: AnyRow;
 };
 
+const roleLabels: Record<StaffRole, string> = {
+  admin: "Administrator",
+  moderator: "Moderator Komunitas"
+};
+
+const allowedSectionsByRole: Record<StaffRole, Section[]> = {
+  admin: [
+    "dashboard", "posts", "activities", "testimonials", "lead-magnets",
+    "galleries", "streaming", "companions", "packages", "members",
+    "orders", "letters", "templates", "operations", "settings"
+  ],
+  moderator: ["dashboard", "letters", "operations"]
+};
+
 const publicSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://qonsulin.id";
 const adminEmail = process.env.NEXT_PUBLIC_QONSULIN_ADMIN_EMAIL || "halo@qonsulin.id";
 
@@ -59,6 +75,8 @@ const sections: Array<{ id: Section; label: string; icon: React.ComponentType<{ 
   { id: "members", label: "Kelola Member", icon: UserCheck },
   { id: "orders", label: "Pesanan Paket", icon: CreditCard },
   { id: "letters", label: "Moderasi Surat", icon: ShieldCheck },
+  { id: "templates", label: "Template Surat", icon: PenLine },
+  { id: "operations", label: "Operasi & Dukungan", icon: MessageCircle },
   { id: "settings", label: "Status & Sinkronisasi", icon: SettingsIcon }
 ];
 
@@ -88,7 +106,22 @@ const emptyStore: Store = {
   letters: []
 };
 
-export default function AdminApp({ initialSlug, initialAuthenticated }: { initialSlug: string[]; initialAuthenticated: boolean }) {
+export default function AdminApp({
+  initialSlug,
+  initialAuthenticated,
+  initialRole = "admin",
+  initialEmail,
+  initialAlias
+}: {
+  initialSlug: string[];
+  initialAuthenticated: boolean;
+  initialRole?: StaffRole;
+  initialEmail?: string;
+  initialAlias?: string;
+}) {
+  const [role, setRole] = useState<StaffRole>(initialRole);
+  const [adminEmail, setAdminEmail] = useState(initialEmail || process.env.NEXT_PUBLIC_QONSULIN_ADMIN_EMAIL || "halo@qonsulin.id");
+  const [adminAlias, setAdminAlias] = useState(initialAlias || "Administrator");
   const initialSection = parseSection(initialSlug[0]);
   const [section, setSection] = useState<Section>(initialSection);
   const [mode, setMode] = useState<Mode>(initialSlug[1] === "new" ? "new" : initialSlug[2] === "edit" ? "edit" : "list");
@@ -134,7 +167,7 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
   }
 
   if (!loggedIn) {
-    return <LoginScreen onLogin={() => setLoggedIn(true)} message={message} setMessage={setMessage} />;
+    return <LoginScreen onLogin={(userRole, userEmail, userAlias) => { setRole(userRole); setAdminEmail(userEmail); setAdminAlias(userAlias); setLoggedIn(true); }} message={message} setMessage={setMessage} />;
   }
 
   const collectionSection = isCollection(section) ? section : "posts";
@@ -147,7 +180,7 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
     window.history.pushState(null, "", adminPath(next, nextMode, id));
   }
 
-  async function save(sectionId: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, payload: Record<string, unknown>, id?: string) {
+  async function save(sectionId: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">, payload: Record<string, unknown>, id?: string) {
     setLoading(true);
     setMessage("");
     const now = new Date().toISOString();
@@ -193,7 +226,7 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
     }
   }
 
-  async function remove(sectionId: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, id: string) {
+  async function remove(sectionId: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">, id: string) {
     if (!window.confirm("Hapus konten ini secara permanen dari database?")) return;
     setLoading(true);
     try {
@@ -240,6 +273,8 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
           {section === "dashboard" && <Dashboard store={store} setSection={(next) => navigate(next)} />}
           {section === "settings" && <Settings loading={loading} onRefresh={loadAll} />}
           {(section === "orders" || section === "letters") && <AdminReviewPanel section={section} orders={store.orders || []} letters={store.letters || []} members={store.members} onRefresh={loadAll} />}
+          {section === "templates" && <AdminTemplatesPanel />}
+          {section === "operations" && <AdminOperationsPanel />}
           {isCollection(section) && mode === "list" && <Collection section={section} rows={store[section]} openNew={() => navigate(section, "new")} openEdit={(id) => navigate(section, "edit", id)} onDelete={(id) => remove(section, id)} />}
           {isCollection(section) && mode !== "list" && <CmsForm section={section} row={editingRow} loading={loading} onCancel={() => navigate(section)} onSubmit={(payload) => save(section, payload, editingRow?.id)} />}
           <footer className="admin-footer">Panel Pengelola Qonsulin.id - Sumatra Barat</footer>
@@ -249,7 +284,7 @@ export default function AdminApp({ initialSlug, initialAuthenticated }: { initia
   );
 }
 
-function LoginScreen({ onLogin, message, setMessage }: { onLogin: () => void; message: string; setMessage: (value: string) => void }) {
+function LoginScreen({ onLogin, message, setMessage }: { onLogin: (role: StaffRole, email: string, alias: string) => void; message: string; setMessage: (value: string) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const supabaseReady = hasSupabaseEnv();
@@ -259,24 +294,20 @@ function LoginScreen({ onLogin, message, setMessage }: { onLogin: () => void; me
     setMessage("");
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedPassword = password.trim();
-    if (normalizedEmail !== adminEmail) {
-      setMessage("Akses tidak diizinkan. Email belum terdaftar di whitelist administrator.");
-      return;
-    }
-
     const serverResponse = await fetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: normalizedEmail, password: normalizedPassword })
     }).catch(() => null);
 
-    if (serverResponse?.ok) {
-      onLogin();
+    const serverBody = serverResponse ? await serverResponse.json().catch(() => null) as null | { ok?: boolean; message?: string; role?: StaffRole; email?: string; alias?: string } : null;
+
+    if (serverResponse?.ok && serverBody?.ok) {
+      onLogin(serverBody.role || "admin", serverBody.email || normalizedEmail, serverBody.alias || normalizedEmail);
       return;
     }
 
-    const serverBody = serverResponse ? await serverResponse.json().catch(() => null) as null | { message?: string } : null;
-    setMessage(serverBody?.message || "Email atau kata sandi admin belum sesuai.");
+    setMessage(serverBody?.message || "Email atau kata sandi tidak sesuai, atau belum terdaftar sebagai staf/konselor.");
   }
 
   return (
@@ -335,7 +366,7 @@ function Dashboard({ store, setSection }: { store: Store; setSection: (section: 
   );
 }
 
-function Collection({ section, rows, openNew, openEdit, onDelete }: { section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">; rows: AnyRow[]; openNew: () => void; openEdit: (id: string) => void; onDelete: (id: string) => void }) {
+function Collection({ section, rows, openNew, openEdit, onDelete }: { section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">; rows: AnyRow[]; openNew: () => void; openEdit: (id: string) => void; onDelete: (id: string) => void }) {
   const config = collectionConfig(section);
   const [status, setStatus] = useState<CmsStatus | "all">("all");
   const [page, setPage] = useState(1);
@@ -362,7 +393,7 @@ function Collection({ section, rows, openNew, openEdit, onDelete }: { section: E
   );
 }
 
-function CmsForm({ section, row, loading, onCancel, onSubmit }: { section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">; row: AnyRow | null; loading: boolean; onCancel: () => void; onSubmit: (payload: Record<string, unknown>) => void }) {
+function CmsForm({ section, row, loading, onCancel, onSubmit }: { section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">; row: AnyRow | null; loading: boolean; onCancel: () => void; onSubmit: (payload: Record<string, unknown>) => void }) {
   const config = formConfig(section);
   const [form, setForm] = useState<Record<string, string | boolean>>(() => initialForm(section, row));
   const titleValue = String(form.title || "");
@@ -538,7 +569,7 @@ function formatAdminDate(value?: string | null) {
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(d);
 }
 
-function formConfig(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">) {
+function formConfig(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">) {
   const commonStatus: FieldDef = { name: "status", label: "Status Publikasi", type: "select", options: [["draft", "Draft"], ["published", "Published"], ["archived", "Archived"]] };
   const configs = {
     posts: { newTitle: "Tulis Artikel Baru", editTitle: "Sunting Artikel", help: "Tulis artikel seputar kesehatan mental, edukasi, dan inspirasi.", submit: "Simpan & Publikasikan", fields: [{ name: "title", label: "Judul Artikel *", required: true }, { name: "slug", label: "Tautan Pendek Web (Otomatis dari Judul)" }, { name: "cover_image_url", label: "Foto Sampul Utama", type: "image" }, { name: "category", label: "Kategori Artikel" }, { name: "tags", label: "Kata Kunci / Tagar (pisahkan dengan koma)" }, commonStatus, { name: "seo_title", label: "Judul untuk Google (Mesin Pencari)" }, { name: "seo_description", label: "Deskripsi Singkat di Google", type: "textarea" }, { name: "excerpt", label: "Ringkasan Singkat Artikel *", type: "textarea", required: true, wide: true }, { name: "content", label: "Isi Lengkap Artikel *", type: "markdown", required: true, wide: true }] },
@@ -580,11 +611,11 @@ function formConfig(section: Exclude<Section, "dashboard" | "settings" | "orders
         { name: "bio", label: "Bio Member", type: "textarea", wide: true }
       ]
     }
-  } satisfies Record<Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, { newTitle: string; editTitle: string; help: string; submit: string; fields: FieldDef[] }>;
+  } satisfies Record<Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">, { newTitle: string; editTitle: string; help: string; submit: string; fields: FieldDef[] }>;
   return configs[section];
 }
 
-function collectionConfig(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">) {
+function collectionConfig(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">) {
   const statusCell = (status: CmsStatus) => <td><span className={`status ${status}`}>{status}</span></td>;
   const configs = {
     posts: { title: "Manajemen Artikel & Blog", subtitle: "Koleksi tulisan edukasi kesehatan mental dan bacaan kawan cerita.", button: "Tulis Artikel Baru", columns: ["Judul Artikel", "Kategori", "Tanggal Terbit", "Tautan Web", "Status"], render: (row: AnyRow) => { const post = row as BlogPost; return <><td><strong>{post.title}</strong></td><td>{post.category}</td><td>{formatAdminDate(post.published_at || post.created_at)}</td><td>/{post.slug}</td>{statusCell(post.status)}</>; } },
@@ -646,7 +677,7 @@ function collectionConfig(section: Exclude<Section, "dashboard" | "settings" | "
   return configs[section];
 }
 
-function initialForm(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, row: AnyRow | null) {
+function initialForm(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">, row: AnyRow | null) {
   const fields = formConfig(section).fields;
   return fields.reduce<Record<string, string | boolean>>((acc, field) => {
     const value = row ? (row as unknown as Record<string, unknown>)[field.name] : undefined;
@@ -666,7 +697,7 @@ function initialForm(section: Exclude<Section, "dashboard" | "settings" | "order
   }, {});
 }
 
-function formToPayload(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, form: Record<string, string | boolean>) {
+function formToPayload(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">, form: Record<string, string | boolean>) {
   const payload: Record<string, unknown> = { ...form };
   if ("tags" in payload) payload.tags = splitList(String(payload.tags || ""));
   for (const key of ["focus_tags", "education", "focus", "experience"]) {
@@ -692,7 +723,7 @@ function splitList(value: string, multilineOnly = false) {
     .filter(Boolean);
 }
 
-function normalizePayload(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, payload: Record<string, unknown>, now: string, isUpdate = false) {
+function normalizePayload(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">, payload: Record<string, unknown>, now: string, isUpdate = false) {
   const normalized: Record<string, unknown> = { ...payload, updated_at: now };
   if (!isUpdate && section === "posts" && normalized.status === "published" && !normalized.published_at) {
     normalized.published_at = now;
@@ -704,8 +735,8 @@ function parseSection(value?: string): Section {
   return sections.some((item) => item.id === value) ? value as Section : "dashboard";
 }
 
-function isCollection(section: Section): section is Exclude<Section, "dashboard" | "settings" | "orders" | "letters"> {
-  return section !== "dashboard" && section !== "settings" && section !== "orders" && section !== "letters";
+function isCollection(section: Section): section is Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations"> {
+  return section !== "dashboard" && section !== "settings" && section !== "orders" && section !== "letters" && section !== "templates" && section !== "operations";
 }
 
 function previewEnabled() {
@@ -721,7 +752,7 @@ function adminPath(section: Section, mode: Mode = "list", id?: string) {
   return `${base}/${section}`;
 }
 
-function publicHref(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters">, row: AnyRow) {
+function publicHref(section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">, row: AnyRow) {
   if (section === "posts") return `/artikel/${(row as BlogPost).slug}`;
   if (section === "galleries") return `/galeri/${(row as GalleryEvent).slug || row.id}`;
   if (section === "streaming") return (row as StreamingVideo).video_url || "/streaming";

@@ -9,6 +9,7 @@ import { getCurrentMemberProfile } from "@/lib/member-auth";
 import { MemberProfile } from "@/lib/member";
 import { getThreadDetail, getActiveTemplates, LetterThreadDetail, LetterTemplate, defaultTemplates } from "@/lib/letters";
 import { LetterEnvelopeView } from "@/components/LetterEnvelopeView";
+import { CrisisGuidance } from "@/components/CrisisGuidance";
 import { ArrowLeft, Send, Heart, ShieldCheck, CheckCircle2 } from "lucide-react";
 
 export default function ReplyLetterPage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,6 +27,7 @@ export default function ReplyLetterPage({ params }: { params: Promise<{ id: stri
   const [sending, setSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [showCrisisGuidance, setShowCrisisGuidance] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -96,7 +98,8 @@ export default function ReplyLetterPage({ params }: { params: Promise<{ id: stri
         return;
       }
 
-      setSuccessMsg("Balasan tersimpan dan menunggu moderasi admin sebelum ditampilkan. Balasan tidak mengurangi kuota surat pembuka.");
+      setShowCrisisGuidance(Boolean(data.is_crisis_hold));
+      setSuccessMsg(data.is_crisis_hold ? "Balasan tersimpan untuk peninjauan khusus dan belum dipublikasikan." : "Balasan tersimpan dan menunggu moderasi admin sebelum ditampilkan. Balasan tidak mengurangi kuota surat pembuka.");
       setContent("");
     } catch (err: any) {
       setErrorMsg(err?.message || "Terjadi kendala saat mengirim balasan.");
@@ -135,6 +138,10 @@ export default function ReplyLetterPage({ params }: { params: Promise<{ id: stri
         <Footer />
       </main>
     );
+  }
+
+  if (thread.delivery_mode === "special") {
+    return <main className="site-shell"><Header active="/member" /><section className="section container" style={{ maxWidth: 540, margin: "3rem auto", textAlign: "center" }}><div className="card" style={{ padding: "2.5rem 1.5rem" }}><h2>Surat Privat Dikelola Admin</h2><p style={{ color: "var(--color-muted)", margin: "1rem 0 1.5rem" }}>Surat tujuan khusus tidak menerima balasan komunitas. Perbarui thread di Ruang Member untuk melihat balasan Tim Qonsulin.</p><Link href="/member" className="btn btn-primary">Ke Ruang Member</Link></div></section><Footer /></main>;
   }
 
   const isPremiumUser = profile?.tier === "premium";
@@ -283,6 +290,7 @@ export default function ReplyLetterPage({ params }: { params: Promise<{ id: stri
           <ShieldCheck size={14} /> Balasan tetap anonim dan aman terlindungi
         </div>
       </section>
+      <CrisisGuidance open={showCrisisGuidance} onClose={() => setShowCrisisGuidance(false)} />
       <Footer />
     </main>
   );
