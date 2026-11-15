@@ -238,6 +238,7 @@ export type MemberThreadSummary = {
   created_at: string;
   moderation_status: "pending" | "approved" | "rejected" | "crisis_hold";
   is_opening: boolean;
+  template_code: string;
   preview: string;
   title?: string | null;
   author_alias?: string;
@@ -254,7 +255,7 @@ export async function getMemberLetterThreads(scope: "inbox" | "outbox"): Promise
     if (scope === "outbox") {
       const { data, error } = await supabase
         .from("letters")
-        .select("id, thread_id, sender_id, is_opening, operator_reply, title, content, moderation_status, created_at, letter_threads(topic, status, delivery_mode, special_destination, handling_status)")
+        .select("id, thread_id, sender_id, is_opening, operator_reply, template_code, title, content, moderation_status, created_at, letter_threads(topic, status, delivery_mode, special_destination, handling_status)")
         .eq("sender_id", userId)
         .eq("is_opening", true)
         .order("created_at", { ascending: false })
@@ -270,6 +271,7 @@ export async function getMemberLetterThreads(scope: "inbox" | "outbox"): Promise
         created_at: row.created_at,
         moderation_status: row.moderation_status,
         is_opening: true,
+        template_code: row.template_code,
         title: row.title,
         preview: row.content
       }));
@@ -286,7 +288,7 @@ export async function getMemberLetterThreads(scope: "inbox" | "outbox"): Promise
 
     const { data: replyRows, error: repliesError } = await supabase
       .from("letters")
-      .select("id, thread_id, sender_id, is_opening, operator_reply, title, content, moderation_status, created_at, letter_threads(topic, status, delivery_mode, special_destination, handling_status)")
+      .select("id, thread_id, sender_id, is_opening, operator_reply, template_code, title, content, moderation_status, created_at, letter_threads(topic, status, delivery_mode, special_destination, handling_status)")
       .in("thread_id", threadIds)
       .eq("is_opening", false)
       .eq("moderation_status", "approved")
@@ -306,6 +308,7 @@ export async function getMemberLetterThreads(scope: "inbox" | "outbox"): Promise
       created_at: row.created_at,
       moderation_status: row.moderation_status,
       is_opening: false,
+      template_code: row.template_code,
       title: row.title,
       preview: row.content,
       author_alias: row.operator_reply ? "Tim Qonsulin" : aliasById.get(row.sender_id) || "Kawan Anonim"

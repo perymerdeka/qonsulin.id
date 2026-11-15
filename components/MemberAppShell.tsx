@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bell, EllipsisVertical, Home, LogOut, Sparkles, SquarePlus, UserRound } from "lucide-react";
 import type { LetterQuota } from "@/lib/letters";
@@ -17,6 +17,7 @@ type MemberShellProps = {
   tier?: "free" | "premium";
   quota?: LetterQuota | null;
   notifications?: MemberNotification[];
+  activeItem?: "home" | "profile" | "account";
   onLogout: () => void;
   children: React.ReactNode;
 };
@@ -30,9 +31,26 @@ function formatNotificationDate(value: string) {
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(new Date(value));
 }
 
-export function MemberAppShell({ alias, tier, quota, notifications = [], onLogout, children }: MemberShellProps) {
+export function MemberAppShell({ alias, tier, quota, notifications = [], activeItem = "home", onLogout, children }: MemberShellProps) {
   const isPremium = tier === "premium";
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isNotificationOpen) return;
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (!notificationRef.current?.contains(event.target as Node)) setIsNotificationOpen(false);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsNotificationOpen(false);
+    }
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isNotificationOpen]);
 
   return (
     <main className="member-app">
@@ -43,7 +61,7 @@ export function MemberAppShell({ alias, tier, quota, notifications = [], onLogou
             <p>Support Letter</p>
           </div>
 
-          <div className="member-notification-wrap">
+          <div className="member-notification-wrap" ref={notificationRef}>
             <button type="button" className="member-notification" aria-expanded={isNotificationOpen} aria-controls="member-notification-panel" onClick={() => setIsNotificationOpen((current) => !current)}>
               <Bell size={20} /><span>Notifikasi</span>{notifications.length > 0 && <b>{Math.min(notifications.length, 99)}</b>}
             </button>
@@ -54,15 +72,15 @@ export function MemberAppShell({ alias, tier, quota, notifications = [], onLogou
           </div>
           <nav className="member-navigation" aria-label="Navigasi member">
             <span className="member-nav-group">Main Boards</span>
-            <Link href="/member" className="is-active"><Home size={20} /> Home</Link>
+            <Link href="/member" className={activeItem === "home" ? "is-active" : undefined}><Home size={20} /> Home</Link>
             <span className="member-nav-group">Settings</span>
-            <Link href="/member/profil"><UserRound size={20} /> Profile</Link>
-            <Link href="/layanan"><SquarePlus size={20} /> Account</Link>
+            <Link href="/member/profil" className={activeItem === "profile" ? "is-active" : undefined}><UserRound size={20} /> Profile</Link>
+            <Link href="/member/akun" className={activeItem === "account" ? "is-active" : undefined}><SquarePlus size={20} /> Account</Link>
             <button type="button" className="member-nav-logout" onClick={onLogout}><LogOut size={20} /> Logout</button>
           </nav>
 
           <div className="member-sidebar-bottom">
-            {!isPremium && <div className="member-upgrade-card"><strong>Upgrade plan</strong><p>Akun Free hanya menyediakan {quota?.limit ?? 3} surat tiap bulan. Butuh lebih?</p><div className="member-quota-meter"><span style={{ width: `${Math.min(100, ((quota?.used ?? 0) / Math.max(quota?.limit ?? 3, 1)) * 100)}%` }} /></div><Link href="/layanan"><Sparkles size={15} /> Upgrade Account</Link></div>}
+            {!isPremium && <div className="member-upgrade-card"><strong>Upgrade plan</strong><p>Akun Free hanya menyediakan {quota?.limit ?? 3} surat tiap bulan. Butuh lebih?</p><div className="member-quota-meter"><span style={{ width: `${Math.min(100, ((quota?.used ?? 0) / Math.max(quota?.limit ?? 3, 1)) * 100)}%` }} /></div><Link href="/member/akun"><Sparkles size={15} /> Upgrade Account</Link></div>}
 
             <div className="member-sidebar-footer"><div className="member-account-mini"><span>{(alias || "T").slice(0, 1).toUpperCase()}</span><div><strong>{alias || "Teman Cerita"}</strong><small>{isPremium ? "Premium Account" : "Free Account"}</small></div><EllipsisVertical size={20} /></div></div>
           </div>

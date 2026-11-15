@@ -1626,28 +1626,435 @@ td { padding: 1rem; border-top: 1px solid oklch(92% 0.01 260); font-size: var(--
   line-height: 1.4;
 }
 /* Realistic letter paper inside envelope stage preview */
-.letter-paper-realistic {
-  background: linear-gradient(180deg, #fffdf7 0%, #fbf7ee 70%, #f5eede 100%);
-  border-radius: .5rem;
-  border: 1px solid #d9ccb2;
-  box-shadow: 0 2px 8px rgba(0,0,0,.06);
-}
-.letterhead {
+.letter-paper-realistic .letterhead-title,
+.letter-paper-realistic .letterhead-sub,
+.letter-paper-realistic .letterhead-date,
+.letter-paper-realistic .letter-body-text { color: inherit; }
+
+.member-letter-envelope {
+  position: relative;
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: .5rem .75rem;
-}
-.letterhead-seal {
-  background: var(--color-brand, #b45309);
-  color: #fff;
-  border-radius: 50%;
-  display: grid;
+  min-height: 138px;
+  margin: .7rem 0;
   place-items: center;
-  font-weight: 700;
+  overflow: hidden;
+  border: 1px solid rgb(123 88 39 / .18);
+  border-radius: .7rem;
+  background: linear-gradient(145deg, #f8f1dd, #e7d6ae);
+  box-shadow: 0 9px 22px rgb(63 37 0 / .12);
+}
+.member-letter-envelope::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(146deg, transparent 49.6%, rgb(134 101 62 / .27) 50%, transparent 50.7%),
+              linear-gradient(214deg, transparent 49.6%, rgb(134 101 62 / .27) 50%, transparent 50.7%);
+}
+.member-letter-envelope-flap {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 55%;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  background: rgb(255 253 247 / .48);
+  filter: drop-shadow(0 2px 2px rgb(56 39 20 / .2));
+}
+.member-letter-envelope-label {
+  z-index: 1;
+  max-width: 76%;
+  margin-top: 1.2rem;
+  padding: .4rem .8rem;
+  border-radius: .2rem;
+  background: rgb(255 253 247 / .8);
+  color: #58402d;
+  font-family: Georgia, serif;
+  font-size: .79rem;
+  text-align: center;
+}
+.member-letter-envelope-seal {
+  position: absolute;
+  z-index: 2;
+  bottom: .75rem;
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border: 2px solid rgb(255 241 176 / .7);
+  border-radius: 50%;
+  background: #991b1b;
+  color: #fff3bf;
+  box-shadow: 0 3px 7px rgb(33 21 9 / .23);
+  font: 800 .65rem Georgia, serif;
+}
+.member-letter-envelope.envelope-warm_pastel { background: linear-gradient(145deg, #f7e7dc, #dcbfa8); }
+.member-letter-envelope.envelope-night_sky { background: linear-gradient(145deg, #283958, #172238); }
+.member-letter-envelope.envelope-botanical_sage { background: linear-gradient(145deg, #e8f2e8, #bcd4bc); }
+.member-letter-envelope.envelope-warm_pastel .member-letter-envelope-seal { background: #b45309; }
+.member-letter-envelope.envelope-night_sky .member-letter-envelope-seal { background: #4338ca; }
+.member-letter-envelope.envelope-botanical_sage .member-letter-envelope-seal { background: #15803d; }
+.member-letter-teaser { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; margin: .65rem 0; color: var(--color-muted); font-size: .83rem; line-height: 1.5; text-align: left; }
+.member-letter-intro { overflow: hidden; margin: .1rem 0 .55rem; color: var(--color-muted); font-size: .87rem; line-height: 1.5; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.member-letter-open-label { display: inline-block; color: var(--color-brand-strong); font-size: .8rem; font-weight: 750; }
+.member-own-letter .member-letter-envelope { min-height: 108px; }
+.member-thread-trigger:hover .member-letter-envelope,
+.member-own-letter:hover .member-letter-envelope { transform: translateY(-2px); box-shadow: 0 13px 27px rgb(63 37 0 / .16); }
+.member-letter-envelope { transition: transform .2s ease, box-shadow .2s ease; }
+
+.member-letter-opening { display: grid; place-items: center; padding: 2.5rem 1rem; text-align: center; color: var(--color-muted); }
+.member-letter-opening .member-envelope-art { width: min(100%, 500px); min-height: 260px; margin: 0 auto; }
+.member-letter-opening .member-envelope-art.is-opening { animation: member-envelope-open 1.1s ease-in-out both; }
+.member-letter-opening .member-envelope-art.is-opening .member-envelope-flap { transform-origin: top center; animation: member-envelope-flap-open 1.1s ease-in-out both; }
+.member-letter-opening .member-envelope-art.is-opening .member-envelope-letterhead-preview { animation: member-envelope-paper-rise 1.1s ease-in-out both; }
+@keyframes member-envelope-open { 0% { transform: scale(.92); opacity: .4; } 25%, 80% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.03); opacity: 1; } }
+@keyframes member-envelope-flap-open { 0%, 28% { transform: rotateX(0); } 80%, 100% { transform: rotateX(175deg); } }
+@keyframes member-envelope-paper-rise { 0%, 40% { transform: translateY(32px); opacity: .2; } 100% { transform: translateY(-38px); opacity: 1; } }
+.member-letter-sheet-dialog .member-thread-item { animation: member-letter-appear .4s ease both; }
+@keyframes member-letter-appear { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .member-letter-opening *, .member-letter-sheet-dialog .member-thread-item { animation: none !important; }
+}
+
+.member-envelope-art.envelope-botanical_sage { background: linear-gradient(145deg, #e8f2e8, #bcd4bc); }
+.member-envelope-art.envelope-botanical_sage .member-envelope-flap { border-bottom-color: #a9c7a9; }
+.member-envelope-art.envelope-warm_pastel .member-envelope-flap { border-bottom-color: #e8c7b3; }
+.member-envelope-art.envelope-night_sky .member-envelope-seal { background: #4338ca; }
+.member-envelope-art.envelope-warm_pastel .member-envelope-seal { background: #b45309; }
+.member-envelope-art.envelope-botanical_sage .member-envelope-seal { background: #15803d; }
+.member-selected-template { margin: -.4rem 0 1rem; color: var(--color-muted); font-size: .78rem; text-align: center; }
+.member-template-stage .member-envelope-art.is-preview { overflow: hidden; }
+
+.member-letter-editor {
+  padding: 1.3rem 1.5rem;
+  border: 1px solid #d6c7a7;
+  border-radius: .6rem;
+  background: #fbf6ec;
+  color: #451a03;
+  box-shadow: 0 10px 24px rgb(63 37 0 / .08);
+  font-family: Georgia, serif;
+}
+.member-letter-editor.paper-warm_pastel { border-color: #fed7aa; background: #fdf6f0; color: #3f251d; font-family: var(--font-body); }
+.member-letter-editor.paper-night_sky { border-color: #374763; background: #1a2538; color: #f1f5f9; font-family: var(--font-body); }
+.member-letter-editor.paper-botanical_sage { border-color: #bcd6be; background: #f1f7f1; color: #193f23; }
+.member-letter-editor-heading { display: flex; justify-content: space-between; gap: .7rem; padding-bottom: .65rem; border-bottom: 1px solid currentColor; font-size: .78rem; font-weight: 750; }
+.member-letter-editor textarea { display: block; width: 100%; min-height: 195px; margin: 1rem 0; padding: .3rem 0; resize: vertical; border: 0; outline: 0; background: transparent; color: inherit; font: inherit; font-size: 1rem; line-height: 1.75; }
+.member-letter-editor textarea::placeholder { color: inherit; opacity: .65; }
+.member-letter-editor textarea:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 5px; }
+.member-letter-editor > p { margin: 0; padding-top: .65rem; border-top: 1px dashed currentColor; font-size: .8rem; font-style: italic; text-align: right; }
+
+.member-settings-page { width: min(100%, 1080px); display: grid; align-content: start; gap: 1.5rem; }
+.member-settings-page .member-section-heading { margin: 0; }
+.member-settings-page .member-section-heading p:last-child { color: var(--color-muted); font-size: .9rem; }
+.member-settings-card { min-width: 0; padding: clamp(1.25rem, 2vw, 2rem); border: 1px solid var(--color-rule); border-radius: 1rem; background: #fff; box-shadow: 0 6px 22px rgb(38 31 21 / .04); }
+.member-settings-card h2 { margin: .75rem 0 .4rem; font-size: 1.1rem; }
+.member-settings-card > p, .member-settings-card small { color: var(--color-muted); }
+.member-profile-form { display: grid; gap: 1.5rem; }
+.member-profile-form .field { display: grid; gap: .45rem; }
+.member-profile-form .field input, .member-profile-form .field textarea { width: 100%; padding: .8rem 1rem; border: 1px solid var(--color-rule); border-radius: .65rem; background: #fff; }
+.member-profile-form .field span, .member-avatar-field legend { font-weight: 800; }
+.member-avatar-field { min-width: 0; padding: 0; border: 0; }
+.member-avatar-field legend { margin-bottom: .85rem; }
+.member-settings-actions { display: flex; justify-content: flex-end; padding-top: 1rem; border-top: 1px solid var(--color-rule); }
+.member-settings-feedback { display: flex; align-items: center; gap: .5rem; margin: 0; padding: .85rem; border-radius: .5rem; font-size: .87rem; }
+.member-settings-feedback.is-success { background: #dcfce7; color: #166534; }
+.member-settings-feedback.is-error { background: #fee2e2; color: #991b1b; }
+.member-account-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.member-account-summary .member-settings-card > svg { color: var(--color-brand); }
+.member-account-summary .member-settings-card > p { overflow-wrap: anywhere; }
+.member-account-orders { margin: 1rem 0 0; padding: 0; list-style: none; }
+.member-account-orders li { display: flex; justify-content: space-between; gap: 1rem; padding: .85rem 0; border-top: 1px solid var(--color-rule); }
+.member-account-orders li div { display: grid; gap: .25rem; }
+.member-account-orders li span { color: var(--color-brand-strong); font-size: .83rem; font-weight: 750; }
+.member-settings-section-title { display: flex; align-items: center; gap: .5rem; font-size: 1.2rem; }
+.member-account-packages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.member-account-packages .member-settings-card { display: flex; flex-direction: column; gap: .85rem; }
+.member-account-packages .member-settings-card h3, .member-account-packages .member-settings-card p { margin: 0; }
+.member-account-packages .member-package-price { color: var(--color-brand-strong); font-size: 1.35rem; font-weight: 800; }
+.member-account-packages .member-settings-card ul { flex: 1; padding-left: 1.2rem; color: var(--color-muted); font-size: .83rem; }
+@media (max-width: 720px) {
+  .member-account-summary, .member-account-packages { grid-template-columns: 1fr; }
+  .member-letter-sheet-dialog { padding: 1rem; }
+}
+
+/* Template 1: burgundy textured envelope with an antique letter sheet. */
+.letter-a-envelope {
+  position: relative;
+  width: min(100%, 470px);
+  aspect-ratio: 9 / 10;
+  min-height: 0;
+  margin: .3rem auto 1.15rem;
+  isolation: isolate;
+  perspective: 1100px;
+}
+.letter-a-envelope-back,
+.letter-a-envelope-folds,
+.letter-a-envelope-front {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: .85rem;
+}
+.letter-a-envelope-back {
+  z-index: 0;
+  border: 1px solid #582227;
+  background: #762d33 url("/member/letter-a/burgundy-texture.png") center / cover;
+  box-shadow: inset 0 0 32px rgb(45 12 16 / .34), 0 15px 32px rgb(66 23 27 / .18);
+}
+.letter-a-envelope-sheet {
+  position: absolute;
+  z-index: 1;
+  top: 8%;
+  left: 12%;
+  display: grid;
+  width: 76%;
+  height: 82%;
+  padding: 1.65rem 1.45rem;
+  align-content: start;
+  overflow: hidden;
+  border: 1px solid #b8a784;
+  border-radius: .12rem;
+  background: linear-gradient(180deg, rgb(255 255 255 / .37), transparent 40%), #eee3c9 url("/member/letter-a/paper-texture.png") center / cover;
+  box-shadow: 0 8px 20px rgb(53 24 17 / .26);
+  color: #6c2d31;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(.86rem, 1.8vw, 1rem);
+  font-style: italic;
+  line-height: 1.65;
+  text-align: center;
+  transform: translateY(9px) rotate(.8deg);
+  transition: transform .72s cubic-bezier(.22, .7, .25, 1), box-shadow .72s ease;
+}
+.letter-a-envelope-sheet::before,
+.letter-a-envelope-sheet::after {
+  position: absolute;
+  right: 15%;
+  left: 15%;
+  height: 1px;
+  content: "";
+  background: rgb(117 66 49 / .2);
+}
+.letter-a-envelope-sheet::before { top: 3.25rem; }
+.letter-a-envelope-sheet::after { top: 4.05rem; }
+.letter-a-envelope-sheet span { position: relative; z-index: 1; display: block; max-width: 18rem; margin: 0 auto; }
+.letter-a-envelope-folds {
+  z-index: 2;
+  background: #7c3036 url("/member/letter-a/burgundy-texture.png") center / cover;
+  clip-path: polygon(0 100%, 0 2%, 50% 54%, 100% 2%, 100% 100%);
+  filter: brightness(.95);
+  transition: opacity .55s ease, transform .72s ease;
+}
+.letter-a-envelope-folds::before,
+.letter-a-envelope-folds::after {
+  position: absolute;
+  top: 34%;
+  width: 56%;
+  height: 78%;
+  content: "";
+  border-top: 1px solid rgb(48 12 16 / .3);
+  background: rgb(68 18 23 / .1);
+}
+.letter-a-envelope-folds::before { left: -23%; transform: rotate(35deg); }
+.letter-a-envelope-folds::after { right: -23%; transform: rotate(-35deg); }
+.letter-a-envelope-front {
+  z-index: 3;
+  background: linear-gradient(135deg, rgb(255 255 255 / .08), transparent 45%), #87363c url("/member/letter-a/burgundy-texture.png") center / cover;
+  clip-path: polygon(0 100%, 0 19%, 50% 61%, 100% 19%, 100% 100%);
+  box-shadow: inset 0 -15px 20px rgb(54 14 18 / .13);
+  transition: transform .72s cubic-bezier(.22, .7, .25, 1), opacity .55s ease;
+}
+.letter-a-envelope-wax {
+  position: absolute;
+  z-index: 4;
+  bottom: 30%;
+  left: 50%;
+  width: 58px;
+  height: 58px;
+  border: 2px solid rgb(104 76 49 / .72);
+  border-radius: 50%;
+  background: #e7d6af url("/member/letter-a/wax-seal.png") center / cover;
+  box-shadow: 0 4px 10px rgb(45 12 16 / .34), inset 0 1px 2px rgb(255 255 255 / .75);
+  transform: translateX(-50%);
+  transition: bottom .72s cubic-bezier(.22, .7, .25, 1), opacity .35s ease, transform .72s cubic-bezier(.22, .7, .25, 1);
+}
+.member-template-stage > .letter-a-envelope { width: 100%; min-height: 0; margin: .3rem 0 1.15rem; }
+.letter-a-envelope.is-compact { width: 100%; min-height: 108px; aspect-ratio: auto; margin: .35rem 0 .55rem; }
+.letter-a-envelope.is-compact .letter-a-envelope-sheet { padding: .6rem .5rem; font-size: .68rem; }
+.letter-a-envelope.is-compact .letter-a-envelope-sheet::before,
+.letter-a-envelope.is-compact .letter-a-envelope-sheet::after { display: none; }
+.letter-a-envelope.is-compact .letter-a-envelope-wax { width: 28px; height: 28px; border-width: 1px; }
+.letter-a-envelope.is-opening {
+  width: min(100%, 500px);
+  min-height: 0;
+  margin: 0 auto;
+  animation: letter-a-envelope-arrive 1s ease-in-out both;
+}
+.letter-a-envelope.is-opening .letter-a-envelope-sheet { z-index: 5; transform: translateY(-31%) rotate(-1.4deg); box-shadow: 0 19px 30px rgb(53 24 17 / .3); }
+.letter-a-envelope.is-opening .letter-a-envelope-folds { opacity: .38; transform: translateY(8px); }
+.letter-a-envelope.is-opening .letter-a-envelope-front { opacity: .6; transform: translateY(14px); }
+.letter-a-envelope.is-opening .letter-a-envelope-wax { bottom: 13%; opacity: .2; transform: translateX(-50%) scale(.7) rotate(12deg); }
+@keyframes letter-a-envelope-arrive {
+  0% { opacity: 0; transform: scale(.92); }
+  35%, 80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.02); }
+}
+.member-template-thumbnail.letter-a-thumbnail {
+  border: 1px solid #64262c;
+  background: #782e34 url("/member/letter-a/burgundy-texture.png") center / cover;
+}
+.member-template-thumbnail.letter-a-thumbnail::before { border-bottom-color: #9c5558; }
+.member-template-thumbnail.letter-a-thumbnail::after { height: 51%; background: #85363c url("/member/letter-a/burgundy-texture.png") center / cover; }
+.member-template-thumbnail.letter-a-thumbnail i { width: 66%; height: 34%; top: 28%; left: 17%; border: 1px solid #b8a784; background: #eee3c9 url("/member/letter-a/paper-texture.png") center / cover; }
+.member-template-thumbnail.letter-a-thumbnail b { bottom: 12%; width: 16px; height: 16px; border: 1px solid #765637; background: #e7d6af url("/member/letter-a/wax-seal.png") center / cover; color: transparent; }
+@media (max-width: 560px) {
+  .letter-a-envelope-sheet { padding: 1.2rem .85rem; }
+  .letter-a-envelope-wax { width: 45px; height: 45px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .letter-a-envelope, .letter-a-envelope * { animation: none !important; transition: none !important; }
+  .letter-a-envelope.is-opening .letter-a-envelope-sheet { transform: translateY(-31%) rotate(-1.4deg); }
+}
+
+/* Letter A uses the same envelope geometry as the supplied reference. */
+.letter-a-envelope {
+  width: min(100%, 470px);
+  aspect-ratio: 9 / 10;
+  min-height: 0;
+  margin: .3rem auto 1.15rem;
+}
+.letter-a-envelope-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.letter-a-svg-label {
+  fill: #453a32;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 34px;
+  font-style: italic;
+}
+.letter-a-svg-sheet,
+.letter-a-svg-folds,
+.letter-a-svg-front,
+.letter-a-svg-front-line,
+.letter-a-svg-seal {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform .72s cubic-bezier(.22, .7, .25, 1), opacity .55s ease;
+}
+.member-template-stage > .letter-a-envelope { width: 100%; max-width: 470px; min-height: 0; margin: .3rem auto 1.15rem; }
+.letter-a-envelope.is-compact { width: min(100%, 156px); min-height: 0; aspect-ratio: 9 / 10; margin: .35rem auto .55rem; }
+.letter-a-envelope.is-compact .letter-a-svg-label { font-size: 25px; }
+.letter-a-envelope.is-opening { width: min(100%, 500px); min-height: 0; }
+.letter-a-envelope.is-opening .letter-a-svg-sheet { transform: translateY(-29%) rotate(-1.4deg); }
+.letter-a-envelope.is-opening .letter-a-svg-folds { opacity: .35; transform: translateY(4%); }
+.letter-a-envelope.is-opening .letter-a-svg-front,
+.letter-a-envelope.is-opening .letter-a-svg-front-line { opacity: .58; transform: translateY(5%); }
+.letter-a-envelope.is-opening .letter-a-svg-seal { opacity: .18; transform: translateY(13%) scale(.72) rotate(12deg); }
+@media (prefers-reduced-motion: reduce) {
+  .letter-a-envelope.is-opening .letter-a-svg-sheet { transform: translateY(-29%) rotate(-1.4deg); }
+}
+
+/* Use the supplied Letter A artwork without reconstructing or distorting it. */
+.letter-a-envelope { aspect-ratio: 540 / 599; }
+.letter-a-envelope-reference { display: block; width: 100%; height: 100%; object-fit: contain; }
+.letter-a-envelope.is-opening { animation: none; }
+.letter-a-envelope.is-opening .letter-a-envelope-reference { animation: letter-a-reference-open .9s cubic-bezier(.22, .7, .25, 1) both; }
+@keyframes letter-a-reference-open {
+  0% { opacity: 0; transform: scale(.92) translateY(2%); }
+  55% { opacity: 1; transform: scale(1.015) translateY(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .letter-a-envelope.is-opening .letter-a-envelope-reference { animation: none; }
+}
+
+.letter-a-envelope.is-closed { aspect-ratio: 540 / 360; }
+.member-thread-trigger .letter-a-envelope.is-closed {
+  width: min(100%, 540px);
+  max-width: 100%;
+  min-height: 0;
+  margin: .35rem auto .7rem;
+}
+.member-thread-trigger:hover .letter-a-envelope.is-closed { transform: translateY(-2px); }
+.letter-a-envelope-opening-cover {
+  position: absolute;
+  top: 16%;
+  left: 0;
+  width: 100%;
+  height: auto;
+  animation: letter-a-closed-reveal .9s ease-in-out both;
+}
+@keyframes letter-a-closed-reveal {
+  0%, 30% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(.97) translateY(3%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .letter-a-envelope-opening-cover { display: none; animation: none; }
+}
+
+/* Template 1: readable parchment paper, without a formal letterhead. */
+.letter-paper-realistic.paper-vintage_parchment,
+.member-letter-editor.paper-vintage_parchment {
+  border-color: #c9b486;
+  background-color: #efe0bf;
+  background-image: linear-gradient(180deg, rgb(255 252 239 / .45), transparent 38%), url("/member/letter-a/paper-texture.png");
+  background-position: center;
+  background-size: cover;
+  color: #442b24;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+}
+.letter-paper-realistic.paper-vintage_parchment {
+  padding: clamp(1.75rem, 4vw, 2.55rem);
+  border-radius: .2rem;
+  box-shadow: 0 10px 24px rgb(69 39 24 / .14), inset 0 0 42px rgb(163 123 76 / .12);
+}
+.paper-vintage_parchment .letter-salutation,
+.member-letter-editor.paper-vintage_parchment .member-letter-editor-salutation {
+  margin: 0 0 1.05rem;
+  color: #6b3531;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  font-size: clamp(1.3rem, 2vw, 1.65rem);
+  font-style: italic;
   line-height: 1;
 }
-.letterhead-title { font-weight: 800; color: #5f4d35; }
-.letterhead-sub { color: #8a765e; font-size: .55rem; }
-.letterhead-date { text-align: right; color: #8a765e; opacity: .85; }
-.letter-body-text { color: #6b5b42; font-style: italic; }
+.paper-vintage_parchment .letter-body-text {
+  color: #442b24;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  font-size: clamp(1rem, 1.25vw, 1.08rem);
+  font-style: normal;
+  line-height: 1.82;
+}
+.paper-vintage_parchment .letter-signoff-burgundy {
+  display: grid;
+  gap: .3rem;
+  margin-top: 2rem;
+  padding-top: 0;
+  border-top: 0;
+  color: #6b3531;
+  text-align: left;
+}
+.paper-vintage_parchment .letter-signoff-burgundy .letter-signoff-sender,
+.paper-vintage_parchment .letter-signoff-burgundy .letter-signoff-quote {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  font-size: 1rem;
+  font-style: italic;
+}
+.paper-vintage_parchment .letter-signoff-burgundy .letter-signoff-quote { color: rgb(68 43 36 / .72); font-size: .92rem; }
+.member-letter-editor.paper-vintage_parchment {
+  padding: clamp(1.5rem, 4vw, 2.35rem);
+  border-radius: .2rem;
+  box-shadow: 0 10px 24px rgb(69 39 24 / .14), inset 0 0 42px rgb(163 123 76 / .12);
+}
+.member-letter-editor.paper-vintage_parchment textarea {
+  min-height: 220px;
+  margin: .35rem 0 1.65rem;
+  color: #442b24;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  font-size: 1.05rem;
+  font-style: normal;
+  line-height: 1.82;
+}
+.member-letter-editor.paper-vintage_parchment textarea::placeholder { color: rgb(68 43 36 / .55); }
+.member-letter-editor.paper-vintage_parchment > p:last-child {
+  color: #6b3531;
+  border-top: 0;
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  font-size: 1rem;
+  font-style: italic;
+  text-align: left;
+}
 
