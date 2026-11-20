@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowRight, BookOpenText, CalendarDays, CheckCircle2, HeartHandshake, MessageCircle, Radio } from "lucide-react";
 import { Footer, Header } from "@/components/PublicChrome";
-import { faq, services, supportTiers, whatsappUrl } from "@/lib/data";
+import { faq, supportTiers, whatsappUrl } from "@/lib/data";
 import { getPublishedActivities, getPublishedGalleryEvents, getPublishedPosts, getPublishedStreamingVideos, plainExcerpt, type ActivityItem, type BlogPost, type GalleryEvent, type StreamingVideo } from "@/lib/cms";
 import { getActivePackages, formatRupiah, type ConsultationPackage } from "@/lib/packages";
 import { PackageOrderButton } from "@/components/PackageOrderButton";
@@ -13,7 +13,7 @@ type PageProps = { params: Promise<{ slug: string }> };
 
 const pageCopy: Record<string, { eyebrow: string; title: string; body: string }> = {
   layanan: { eyebrow: "Layanan Resmi Terintegrasi", title: "Pusat Layanan Pendampingan Mental Wellness", body: "Menyediakan ruang berekspresi jujur bebas dari stigma, terstruktur khusus untuk kebutuhan hidup mahasiswa, profesional muda, dan keluarga." },
-  harga: { eyebrow: "Tarif & Paket Transparan", title: "Katalog Paket & Membership QONSULIN.ID", body: "Pilih paket ruang katarsis surat batin atau pendampingan konseling 1-on-1 yang paling sesuai dengan kebutuhanmu." },
+  harga: { eyebrow: "Membership Persuratan", title: "Paket Member Free & Premium", body: "Pilih paket akun untuk menulis dan membalas surat anonim. Membership ini tidak mencakup sesi konsultasi profesional." },
   konsultan: { eyebrow: "Kredibilitas Tim Pendamping", title: "Transparansi Kompetensi Teman Cerita & Konselor", body: "Menyelaraskan tingkat kedalaman krisis emosionalmu dengan keahlian yang tepat guna menjaga standar perlindungan yang aman, murah, dan humanis." },
   artikel: { eyebrow: "Edukasi Mental Wellness", title: "Katalog Artikel & Blog", body: "Koleksi tulisan penunjang SEO dan edukasi kawan cerita dengan bahasa ringan, aman, dan tidak mengklaim diagnosis klinis." },
   faq: { eyebrow: "Bantuan", title: "Pertanyaan yang Sering Diajukan", body: "Jawaban singkat tentang cara mulai berkonsultasi, batas layanan, dan bagaimana QONSULIN.ID menjaga privasi cerita." },
@@ -66,14 +66,10 @@ function getActivePath(slug: string) {
 }
 
 function ServicesPage({ packages = [] }: { packages?: ConsultationPackage[] }) {
-  const assessmentOptions = [
-    ["Active Listener / Teman Dengar", "Tepat untuk melepaskan penat atau sementara, bad day harian, overthinking skripsi biasa, kebingungan karir ringan, atau sekadar butuh telinga netral untuk meluapkan emosi tanpa perlu kesimpulan penanganan medis."],
-    ["Psikolog Klinis Profesional", "Diharuskan apabila ada indikasi kecenderungan membahayakan diri sendiri, keputusan mental berat berbulan-bulan yang mengganggu fungsi produktif dasar, delusi kronis, trauma masa lalu yang melumpuhkan, atau kecemasan medis akut."]
-  ];
-  const sessionSteps = [
-    ["Pilih Subpaket Layanan", "Tinjau kecocokan gejala emosionalmu dengan list koping kami di bawah."],
-    ["Konsultasi Ringan Khusus", "Kirim form pesan WhatsApp untuk divalidasi krisis batinnya oleh Admin."],
-    ["Temu Temu Teman Dengar", "Berdiskusi langsung secara aman, privat, santai, dan penuh empati dari hati ke hati."]
+  const letterSteps = [
+    ["Buat akun", "Daftar sebagai Member Free untuk mulai menggunakan ruang persuratan anonim."],
+    ["Tulis atau balas surat", "Kirim surat ke Kolam Surat atau pilih Permintaan Dukungan Awal bila memerlukan arahan tim."],
+    ["Tunggu moderasi", "Surat publik ditinjau sebelum ditampilkan agar ruang komunitas tetap aman dan anonim."]
   ];
 
   return (
@@ -82,9 +78,9 @@ function ServicesPage({ packages = [] }: { packages?: ConsultationPackage[] }) {
       <section className="section" id="tarif-paket" style={{ background: "var(--color-surface-muted)", padding: "3.5rem 0", borderBottom: "1px solid var(--color-rule)" }}>
         <div className="container">
           <div className="section-head center">
-            <span className="tag">Tarif & Tier Transparan</span>
-            <h2>Pilihan Paket Sesuai Kebutuhan Jiwamu</h2>
-            <p>Mulai dari ruang katarsis surat batin anonim gratis hingga pendampingan profesional bersama psikolog berwenang.</p>
+            <span className="tag">Membership Persuratan</span>
+            <h2>Member Free & Member Premium</h2>
+            <p>Dua pilihan paket akun untuk fitur surat anonim. Screening awal adalah permintaan dukungan melalui surat, bukan sesi konsultasi psikolog.</p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.5rem", marginTop: "2rem" }}>
@@ -109,7 +105,7 @@ function ServicesPage({ packages = [] }: { packages?: ConsultationPackage[] }) {
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
                       <span className="pill muted" style={{ fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 700 }}>
-                        {pkg.category === "membership" ? "Membership Surat" : "Konsultasi 1-on-1"}
+                        Membership Surat
                       </span>
                       {pkg.badge && (
                         <span
@@ -175,45 +171,15 @@ function ServicesPage({ packages = [] }: { packages?: ConsultationPackage[] }) {
         </div>
       </section>
 
-      <section className="container service-directory">
-        {services.map((service, index) => {
-              const Icon = service.icon;
-              return (
-                <article className={`service-route-card ${index % 2 === 0 ? "media-left" : "media-right"}`} id={service.id} key={service.id}>
-                  <div className="service-route-icon"><Icon size={42} /><span>QONSULIN.ID</span></div>
-                  <div className="service-route-body">
-                    <span className="service-route-format">{service.format}</span>
-                    <h2>{service.title}</h2>
-                    <p>{service.description}</p>
-                    <div className="service-route-fit"><strong>Layanan ini sangat cocok bagi kamu yang:</strong><div>{service.suitableFor.map((item) => <span key={item}><CheckCircle2 size={13} />{item}</span>)}</div></div>
-                    <div className="service-route-footer"><small><b>Support focus:</b><br />{service.media}</small><a className="btn btn-primary" href={serviceWhatsAppUrl(service.title)}><MessageCircle size={15} />Diskusikan Kebutuhan Saya</a></div>
-                  </div>
-                </article>
-              );
-            })}
-      </section>
-
-      <section className="section service-assessment">
-        <div className="container">
-          <div className="section-head center"><span className="tag">Alokasi Asesmen Krisis</span><h2>Kapan Harus Memilih Teman Cerita vs Psikolog Klinis?</h2></div>
-          <div className="service-assessment-grid">{assessmentOptions.map(([title, body], index) => <article className="service-assessment-card" key={title}><span className={index === 0 ? "amber" : "green"} /> <h3>{title}</h3><p>{body}</p></article>)}</div>
-        </div>
-      </section>
-
       <section className="section service-start">
         <div className="container service-start-panel">
-          <div className="section-head center"><h2>Bagaimana Cara Memulai Sesi?</h2><p>Seluruh alur pendaftaran beroperasi menggunakan platform komunikasi WhatsApp yang efisien dan humanis.</p></div>
-          <div className="service-start-grid">{sessionSteps.map(([title, body]) => <article className="service-start-card" key={title}><CheckCircle2 size={16} /><h3>{title}</h3><p>{body}</p></article>)}</div>
-          <div className="service-start-actions"><a className="btn btn-white" href="/asesmen">Coba Pemetaan Kebutuhan Awal<ArrowRight size={15} /></a><a className="btn btn-primary" href={whatsappUrl}><MessageCircle size={15} />Hubungi Admin Layanan Sekarang</a></div>
+          <div className="section-head center"><h2>Bagaimana Cara Memulai?</h2><p>Qonsulin MVP berfokus pada surat anonim, balasan komunitas, dan dukungan awal melalui surat.</p></div>
+          <div className="service-start-grid">{letterSteps.map(([title, body]) => <article className="service-start-card" key={title}><CheckCircle2 size={16} /><h3>{title}</h3><p>{body}</p></article>)}</div>
+          <div className="service-start-actions"><a className="btn btn-primary" href="/member/daftar">Mulai Menulis Surat<ArrowRight size={15} /></a></div>
         </div>
       </section>
     </>
   );
-}
-
-function serviceWhatsAppUrl(serviceTitle: string) {
-  const message = `Halo Admin QONSULIN.ID, saya ingin berdiskusi tentang layanan ${serviceTitle}. Mohon bantu arahkan alur dan jadwal yang tersedia.`;
-  return `https://wa.me/6285191020288?text=${encodeURIComponent(message)}`;
 }
 
 function ConsultantPage() {

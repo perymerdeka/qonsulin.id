@@ -68,10 +68,11 @@ export default function MemberDashboardPage() {
   }
 
   if (!profile) return null;
+  const effectiveTier = quota?.tier || profile.tier;
 
   return (
-    <MemberAppShell alias={profile.alias} tier={profile.tier} quota={quota} notifications={notifications} onLogout={handleLogout}>
-      <MemberDashboard alias={profile.alias} memberId={profile.id} tier={profile.tier} quota={quota} orders={orders} onLetterSent={async () => setQuota(await getMemberQuota())} onNotificationsChange={setNotifications} />
+    <MemberAppShell alias={profile.alias} avatarConfig={profile.avatar_config} tier={effectiveTier} quota={quota} notifications={notifications} onLogout={handleLogout}>
+      <MemberDashboard alias={profile.alias} avatarConfig={profile.avatar_config} memberId={profile.id} tier={effectiveTier} quota={quota} orders={orders} onLetterSent={async () => setQuota(await getMemberQuota())} onNotificationsChange={setNotifications} />
     </MemberAppShell>
   );
 }

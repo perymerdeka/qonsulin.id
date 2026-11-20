@@ -61,9 +61,10 @@ export function MemberSettingsShell({ activeItem, children }: { activeItem: "pro
 
   if (loading) return <main className="member-loading-screen"><p>Memuat pengaturan akunmu...</p></main>;
   if (!profile) return null;
+  const effectiveTier = quota?.tier || profile.tier;
 
   return (
-    <MemberAppShell alias={profile.alias} tier={profile.tier} quota={quota} notifications={notifications} activeItem={activeItem} onLogout={logout}>
+    <MemberAppShell alias={profile.alias} avatarConfig={profile.avatar_config} tier={effectiveTier} quota={quota} notifications={notifications} activeItem={activeItem} onLogout={logout}>
       <div className="member-settings-page">{children({ profile, quota, orders, email, onProfileUpdated: setProfile })}</div>
     </MemberAppShell>
   );

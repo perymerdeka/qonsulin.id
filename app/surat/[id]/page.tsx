@@ -89,7 +89,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
             <ArrowLeft size={16} /> {thread.delivery_mode === "special" ? "Kembali ke Ruang Member" : "Kembali ke Kolam Surat"}
           </Link>
           <span className="pill muted" style={{ fontSize: "0.78rem" }}>
-            {thread.delivery_mode === "special" ? "Surat Privat - " + (thread.special_destination === "mentor" ? "Mentor" : "Konselor") : "Topik: " + thread.topic}
+            {thread.delivery_mode === "special" ? "Permintaan Dukungan Awal" : "Topik: " + thread.topic}
           </span>
           {thread.status !== "open" && (
             <span

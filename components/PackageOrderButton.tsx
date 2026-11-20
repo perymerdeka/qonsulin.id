@@ -18,6 +18,10 @@ export function PackageOrderButton({ pkg, premium = false }: Props) {
 
   async function startOrder() {
     setMessage("");
+    if (pkg.category !== "membership" || pkg.code !== "member_premium") {
+      setMessage("Hanya paket Member Premium yang tersedia untuk dipesan pada MVP persuratan.");
+      return;
+    }
     setLoading(true);
 
     try {

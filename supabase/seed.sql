@@ -73,7 +73,7 @@ begin
   values (v_premium_user, 'Kelelahan setelah bekerja', 'open', now() - interval '1 day', now() - interval '1 day')
   returning id into v_thread_id;
   insert into public.letters (thread_id, sender_id, is_opening, reply_type, template_code, title, content, moderation_status, created_at, updated_at)
-  values (v_thread_id, v_premium_user, true, 'community', 'botanical_sage', 'Ruang istirahat untuk diri sendiri', 'Ini data dummy staging. Aku ingin mengingat bahwa beristirahat bukan berarti gagal dan aku boleh meminta dukungan saat tenaga terasa menipis.', 'pending', now() - interval '1 day', now() - interval '1 day');
+  values (v_thread_id, v_premium_user, true, 'community', 'night_sky', 'Ruang istirahat untuk diri sendiri', 'Ini data dummy staging. Aku ingin mengingat bahwa beristirahat bukan berarti gagal dan aku boleh meminta dukungan saat tenaga terasa menipis.', 'pending', now() - interval '1 day', now() - interval '1 day');
 
   -- Rejected opening: validates the rejected-state moderation UI.
   insert into public.letter_threads (author_id, topic, status, created_at, updated_at)

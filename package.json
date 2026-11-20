@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "sync:live": "node scripts/sync-live-supabase.mjs",
     "sync:live:push": "node scripts/sync-live-supabase.mjs --push",
+    "seed:avatar-showcase": "node scripts/seed-avatar-showcase.mjs",
     "docker:up": "powershell -ExecutionPolicy Bypass -File ./scripts/start-docker.ps1",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f web",

@@ -71,11 +71,10 @@ const sections: Array<{ id: Section; label: string; icon: React.ComponentType<{ 
   { id: "galleries", label: "Dokumentasi Galeri", icon: Images },
   { id: "streaming", label: "Tayangan Video", icon: Radio },
   { id: "companions", label: "Kelola Pendamping", icon: UsersRound },
-  { id: "packages", label: "Tarif & Paket", icon: CreditCard },
+  { id: "packages", label: "Membership Surat", icon: CreditCard },
   { id: "members", label: "Kelola Member", icon: UserCheck },
   { id: "orders", label: "Pesanan Paket", icon: CreditCard },
   { id: "letters", label: "Moderasi Surat", icon: ShieldCheck },
-  { id: "templates", label: "Template Surat", icon: PenLine },
   { id: "operations", label: "Operasi & Dukungan", icon: MessageCircle },
   { id: "settings", label: "Status & Sinkronisasi", icon: SettingsIcon }
 ];
@@ -276,7 +275,7 @@ export default function AdminApp({
           {section === "templates" && <AdminTemplatesPanel />}
           {section === "operations" && <AdminOperationsPanel />}
           {isCollection(section) && mode === "list" && <Collection section={section} rows={store[section]} openNew={() => navigate(section, "new")} openEdit={(id) => navigate(section, "edit", id)} onDelete={(id) => remove(section, id)} />}
-          {isCollection(section) && mode !== "list" && <CmsForm section={section} row={editingRow} loading={loading} onCancel={() => navigate(section)} onSubmit={(payload) => save(section, payload, editingRow?.id)} />}
+          {isCollection(section) && mode !== "list" && <CmsForm section={section} row={editingRow} loading={loading} membershipPolicyAvailable={section !== "packages" || store.packages.length > 0 && store.packages.every((item) => "screening_quota" in item && "membership_tier" in item)} onCancel={() => navigate(section)} onSubmit={(payload) => save(section, payload, editingRow?.id)} />}
           <footer className="admin-footer">Panel Pengelola Qonsulin.id - Sumatra Barat</footer>
         </section>
       </div>
@@ -337,7 +336,7 @@ function Dashboard({ store, setSection }: { store: Store; setSection: (section: 
     { label: "Lead Magnet", number: store["lead-magnets"].length, help: "Bimbingan ebook gratis", id: "lead-magnets", icon: Upload, tone: "rose" },
     { label: "Galeri Kegiatan", number: store.galleries.length, help: `${store.galleries.filter((row) => row.status === "published").length} terbit, ${store.galleries.filter((row) => row.status === "draft").length} draf`, id: "galleries", icon: Images, tone: "violet" },
     { label: "Pendamping", number: store.companions.length, help: "Profil tampil di landing page", id: "companions", icon: UsersRound, tone: "emerald" },
-    { label: "Tarif & Paket", number: store.packages.length, help: "Katalog layanan & membership", id: "packages", icon: CreditCard, tone: "amber" },
+    { label: "Membership Surat", number: store.packages.length, help: "Paket Free dan Premium", id: "packages", icon: CreditCard, tone: "amber" },
     { label: "Total Member", number: store.members.length, help: `${store.members.filter((m) => m.tier === "premium").length} member premium`, id: "members", icon: UserCheck, tone: "blue" }
   ] as const;
   const quickActions = [
@@ -347,7 +346,7 @@ function Dashboard({ store, setSection }: { store: Store; setSection: (section: 
     ["Tambah Lead Magnet", "lead-magnets", Upload],
     ["Tambah Kegiatan", "galleries", ImagePlus],
     ["Tambah Pendamping", "companions", UsersRound],
-    ["Atur Paket Layanan", "packages", CreditCard],
+    ["Kelola Membership Surat", "packages", CreditCard],
     ["Kelola Tier Member", "members", UserCheck]
   ] as const;
 
@@ -363,6 +362,40 @@ function Dashboard({ store, setSection }: { store: Store; setSection: (section: 
         <article className="admin-card guide-card"><h3>Pedoman Keselamatan Hukum (Mental Wellness)</h3><p>Sistem administrasi QONSULIN.ID dibangun guna mendukung perbanyakan konten edukatif batin (Mental Wellness) dan Social Proof aktivitas.</p><div className="guidelines">{["Persona Anonim: Saat mengunggah testimoni klien, dilarang merekam nama asli.", "Mencegah Klaim Mutlak: Gunakan diksi ramah seperti pendampingan batin, konseling terarah, kawan cerita, mental wellness.", "Akurasi Social Proof: Pastikan seluruh daftar aktivitas yang disiarkan di homepage mewakili agenda riil yang pernah dilaksanakan."].map((item) => <p className="guideline" key={item}><span className="ok">OK</span><span>{item}</span></p>)}</div></article>
       </div>
     </>
+  );
+}
+
+function MembershipPolicyPanel({ packages, onEdit }: { packages: ConsultationPackage[]; onEdit?: (id: string) => void }) {
+  const tiers = ["free", "premium"] as const;
+  const missingPolicyFields = packages.some((item) => item.category === "membership" && (!("membership_tier" in item) || !("screening_quota" in item)));
+
+  function quotaLabel(value: number | null | undefined, label: string) {
+    if (value === -1) return label + " tanpa batas";
+    if (value === null || value === undefined) return "Belum dikonfigurasi";
+    return value + " " + label + " per bulan";
+  }
+
+  return (
+    <section className="membership-policy-panel" aria-labelledby="membership-policy-title">
+      <div className="membership-policy-heading">
+        <div><p className="admin-eyebrow">MEMBERSHIP PERSURATAN</p><h2 id="membership-policy-title">Dua paket akun untuk fitur surat</h2><p>Member Free dan Member Premium menentukan akses persuratan, kuota surat publik, serta screening awal ke konselor.</p></div>
+      </div>
+      {missingPolicyFields && <p className="membership-policy-warning" role="status">Data pengaturan kuota baru belum tersedia. Pembaruan database perlu diselesaikan sebelum kuota baru dapat disimpan dan digunakan.</p>}
+      <div className="package-policy-group"><div className="package-policy-group-heading"><h3>Paket yang tersedia</h3><p>Hanya Member Free dan Member Premium. Tidak ada produk konsultasi pada MVP ini.</p></div><div className="membership-policy-grid">{tiers.map((tier) => {
+        const item = packages.find((pkg) => pkg.membership_tier === tier) || packages.find((pkg) => pkg.code === `member_${tier}`);
+        const letterQuota = item?.letter_quota;
+        const screeningQuota = item?.screening_quota;
+        return <article key={tier} className={`membership-policy-card is-${tier}`}>
+          <span>Paket Akun / {tier === "premium" ? "PREMIUM" : "FREE"}</span>
+          <h3>{item?.name || `Member ${tier === "premium" ? "Premium" : "Free"}`}</h3>
+          <strong>{item ? formatRupiah(item.price) : "Belum dikonfigurasi"}{item?.duration_days ? <small> / {item.duration_days} hari</small> : null}</strong>
+          <p>{quotaLabel(letterQuota, "surat publik")}</p>
+          <p>{quotaLabel(screeningQuota, "permintaan screening awal")}</p>
+          <small>{tier === "free" ? "Saat sistem dinamis aktif, perubahan kuota berlaku awal bulan WIB berikutnya." : "Saat sistem dinamis aktif, kuota dan durasi dicatat ketika pesanan dibuat."}</small>
+          {onEdit && item && <button type="button" onClick={() => onEdit(item.id)}><PenLine size={14} /> Ubah Kebijakan</button>}
+        </article>;
+      })}</div></div>
+    </section>
   );
 }
 
@@ -385,18 +418,21 @@ function Collection({ section, rows, openNew, openEdit, onDelete }: { section: E
 
   return (
     <>
-      <div className="admin-title"><div><h1>{config.title}</h1><p>{config.subtitle}</p></div><button className="btn btn-primary" onClick={openNew}><FilePlus2 size={15} />{config.button}</button></div>
+      <div className="admin-title"><div><h1>{config.title}</h1><p>{config.subtitle}</p></div>{section !== "packages" && <button className="btn btn-primary" onClick={openNew}><FilePlus2 size={15} />{config.button}</button>}</div>
+      {section === "packages" && <MembershipPolicyPanel packages={rows as ConsultationPackage[]} onEdit={openEdit} />}
       <div className="admin-toolbar"><select value={status} onChange={(event) => setStatus(event.target.value as CmsStatus | "all")}><option value="all">Status: Semua</option><option value="published">Published</option><option value="draft">Draft</option><option value="archived">Archived</option></select></div>
-      <div className="table-wrap"><table><thead><tr>{config.columns.map((column) => <th key={column}>{column}</th>)}<th>Aksi</th></tr></thead><tbody>{visibleRows.length === 0 ? <tr><td colSpan={config.columns.length + 1}>Belum ada data pada filter ini.</td></tr> : paginatedRows.map((row) => <tr key={row.id}>{config.render(row)}<td><span className="icon-actions"><a href={publicHref(section, row)} aria-label="lihat" target="_blank"><Eye size={16} /></a><button aria-label="edit" onClick={() => openEdit(row.id)}><PenLine size={16} /></button><button aria-label="hapus" onClick={() => onDelete(row.id)}><Trash2 size={16} /></button></span></td></tr>)}</tbody></table></div>
+      <div className="table-wrap"><table><thead><tr>{config.columns.map((column) => <th key={column}>{column}</th>)}<th>Aksi</th></tr></thead><tbody>{visibleRows.length === 0 ? <tr><td colSpan={config.columns.length + 1}>Belum ada data pada filter ini.</td></tr> : paginatedRows.map((row) => <tr key={row.id}>{config.render(row)}<td><span className="icon-actions"><a href={publicHref(section, row)} aria-label="lihat" target="_blank"><Eye size={16} /></a><button aria-label="edit" onClick={() => openEdit(row.id)}><PenLine size={16} /></button>{section !== "packages" && <button aria-label="hapus" onClick={() => onDelete(row.id)}><Trash2 size={16} /></button>}</span></td></tr>)}</tbody></table></div>
       <AdminPagination page={page} totalItems={visibleRows.length} pageSize={pageSize} onChange={setPage} />
     </>
   );
 }
 
-function CmsForm({ section, row, loading, onCancel, onSubmit }: { section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">; row: AnyRow | null; loading: boolean; onCancel: () => void; onSubmit: (payload: Record<string, unknown>) => void }) {
+function CmsForm({ section, row, loading, membershipPolicyAvailable, onCancel, onSubmit }: { section: Exclude<Section, "dashboard" | "settings" | "orders" | "letters" | "templates" | "operations">; row: AnyRow | null; loading: boolean; membershipPolicyAvailable: boolean; onCancel: () => void; onSubmit: (payload: Record<string, unknown>) => void }) {
   const config = formConfig(section);
   const [form, setForm] = useState<Record<string, string | boolean>>(() => initialForm(section, row));
   const titleValue = String(form.title || "");
+  const isPackageForm = section === "packages";
+  const visibleFields = (config.fields as FieldDef[]).filter((field) => membershipPolicyAvailable || !["letter_quota", "screening_quota"].includes(field.name));
 
   useEffect(() => {
     if (row) setForm(initialForm(section, row));
@@ -408,15 +444,21 @@ function CmsForm({ section, row, loading, onCancel, onSubmit }: { section: Exclu
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSubmit(formToPayload(section, form));
+    const payload = formToPayload(section, form);
+    if (!membershipPolicyAvailable) {
+      delete payload.letter_quota;
+      delete payload.screening_quota;
+    }
+    onSubmit(payload);
   }
 
   return (
     <>
       <div className="admin-title"><div><h1>{row ? config.editTitle : config.newTitle}</h1><p>{config.help}</p></div><button className="admin-badge" onClick={onCancel}>Kembali & Batal</button></div>
       <form className="form-layout" onSubmit={submit}>
+        {isPackageForm && <div className="package-form-notice is-membership"><strong>Paket akun: mengatur hak pengguna.</strong><p>{membershipPolicyAvailable ? "Ubah harga, kuota surat publik, dan batas screening awal." : "Harga, masa aktif, dan tampilan paket dapat diubah. Pengaturan kuota belum aktif dan menunggu pembaruan database."} Nama serta tier Free/Premium dikunci agar selalu hanya ada dua paket membership.</p></div>}
         <div className="form-grid">
-          {config.fields.map((field) => <Field key={field.name} label={field.label} wide={field.wide}>{renderInput(field, form[field.name], (value) => setForm((current) => ({ ...current, [field.name]: value })))}</Field>)}
+          {visibleFields.map((field) => <Field key={field.name} label={field.label} wide={field.wide}>{renderInput(field, form[field.name], (value) => setForm((current) => ({ ...current, [field.name]: value })))}</Field>)}
         </div>
         <div className="form-actions"><button className="btn btn-white" type="button" onClick={onCancel}>Kembali</button><button className="btn btn-primary" disabled={loading} type="submit"><Save size={15} />{loading ? "Menyimpan..." : config.submit}</button></div>
       </form>
@@ -580,19 +622,17 @@ function formConfig(section: Exclude<Section, "dashboard" | "settings" | "orders
     streaming: { newTitle: "Tambah Video Edukasi", editTitle: "Sunting Video Edukasi", help: "Kelola tayangan video edukasi dan rekaman siaran.", submit: "Simpan Video", fields: [{ name: "title", label: "Judul Video *", required: true }, { name: "slug", label: "Tautan Web (Otomatis dari Judul)" }, { name: "video_url", label: "Tautan Video YouTube / Rekaman *", type: "url", required: true }, { name: "thumbnail_url", label: "Foto Sampul Video", type: "image" }, { name: "source_label", label: "Sumber Siaran (Misal: YouTube)" }, { name: "stream_type", label: "Jenis Siaran", type: "select", options: [["offline", "Video Rekaman"], ["live", "Sedang Tayang (Live)"], ["upcoming", "Jadwal Tayang Mendatang"]] }, { name: "published_at", label: "Tanggal Terbit", type: "date" }, { name: "live_at", label: "Jadwal Mulai Tayang", type: "datetime-local" }, { name: "sort_order", label: "Urutan Tampil", type: "number" }, commonStatus, { name: "is_featured", label: "Tampilkan di Halaman Utama (Unggulan)", type: "checkbox" }, { name: "description", label: "Keterangan Video", type: "textarea", wide: true }] },
     companions: { newTitle: "Tambah Profil Pendamping", editTitle: "Sunting Profil Pendamping", help: "Kelola profil rekan pendamping yang tampil di website QONSULIN.ID.", submit: "Simpan Profil", fields: [{ name: "name", label: "Nama Lengkap & Gelar *", required: true }, { name: "role", label: "Profesi / Peran *", required: true }, { name: "badge", label: "Kategori Layanan (Badge)" }, { name: "credential", label: "Latar Belakang Pendidikan Singkat" }, { name: "image_url", label: "Foto Profil", type: "image" }, { name: "languages", label: "Bahasa yang Dikuasai" }, { name: "sort_order", label: "Urutan Tampil", type: "number" }, commonStatus, { name: "cta_enabled", label: "Tampilkan Tombol Konsultasi WhatsApp", type: "checkbox" }, { name: "preview", label: "Ringkasan Singkat di Kartu Depan", type: "textarea", wide: true }, { name: "description", label: "Profil & Latar Belakang Lengkap", type: "textarea", wide: true }] },
     packages: {
-      newTitle: "Tambah Paket Baru",
-      editTitle: "Sunting Paket & Tarif",
-      help: "Kelola harga, durasi, kuota surat, dan fitur paket konsultasi / membership.",
+      newTitle: "Tambah Paket Membership",
+      editTitle: "Sunting Paket Membership",
+      help: "Kelola dua paket persuratan yang sudah ditetapkan: Member Free dan Member Premium.",
       submit: "Simpan Paket",
       fields: [
-        { name: "code", label: "Kode Unik Paket (misal: member_premium) *", required: true },
-        { name: "name", label: "Nama Paket *", required: true },
-        { name: "category", label: "Kategori Layanan *", type: "select", options: [["membership", "Membership Surat Batin"], ["consultation", "Konsultasi 1-on-1"]] },
         { name: "price", label: "Tarif Resmi (Rp) *", type: "number", required: true },
         { name: "original_price", label: "Harga Coret Promo (Rp opsional)", type: "number" },
         { name: "badge", label: "Label Badge (misal: Pilihan Populer, Terjangkau)" },
-        { name: "letter_quota", label: "Kuota Surat Bulanan (-1 jika Unlimited)", type: "number" },
-        { name: "duration_days", label: "Masa Aktif Hari (misal: 30 untuk bulanan)", type: "number" },
+        { name: "letter_quota", label: "Batas Surat Publik per Bulan (-1 = tanpa batas)", type: "number" },
+        { name: "screening_quota", label: "Batas Screening Awal ke Konselor per Bulan (-1 = tanpa batas)", type: "number" },
+        { name: "duration_days", label: "Masa Aktif Paket (hari; kosongkan untuk Free)", type: "number" },
         { name: "sort_order", label: "Urutan Tampil", type: "number" },
         { name: "is_active", label: "Aktifkan Paket (Ditampilkan di Website)", type: "checkbox" },
         { name: "description", label: "Deskripsi Singkat Paket", type: "textarea", wide: true },
@@ -626,10 +666,10 @@ function collectionConfig(section: Exclude<Section, "dashboard" | "settings" | "
     streaming: { title: "Tayangan Video", subtitle: "Koleksi video edukasi, rekaman siaran, dan informasi tayangan langsung.", button: "Tambah Video", columns: ["Judul Video", "Jenis Siaran", "Sumber", "Status"], render: (row: AnyRow) => { const item = row as StreamingVideo; return <><td><strong>{item.title}</strong></td><td>{item.stream_type === "live" ? "Live" : item.stream_type === "upcoming" ? "Jadwal" : "Rekaman"}</td><td>{item.source_label || "-"}</td>{statusCell(item.status)}</>; } },
     companions: { title: "Kelola Profil Pendamping", subtitle: "Daftar profil pendamping yang tampil di halaman depan website.", button: "Tambah Pendamping", columns: ["Nama & Gelar", "Profesi / Peran", "Urutan", "Status"], render: (row: AnyRow) => { const item = row as CompanionProfile; return <><td><strong>{item.name}</strong></td><td>{item.role}</td><td>{item.sort_order || 0}</td>{statusCell(item.status)}</>; } },
     packages: {
-      title: "Manajemen Tarif & Paket Layanan",
-      subtitle: "Pengaturan harga membership surat batin dan tarif sesi konsultasi 1-on-1.",
+      title: "Membership Surat",
+      subtitle: "Dua paket tetap untuk MVP persuratan: Member Free dan Member Premium.",
       button: "Tambah Paket",
-      columns: ["Nama Paket", "Kategori", "Tarif", "Kuota Surat", "Masa Aktif", "Status"],
+      columns: ["Paket", "Tarif", "Kuota Surat", "Screening Awal", "Masa Aktif", "Status"],
       render: (row: AnyRow) => {
         const pkg = row as ConsultationPackage;
         return (
@@ -639,13 +679,13 @@ function collectionConfig(section: Exclude<Section, "dashboard" | "settings" | "
               {pkg.badge && <span className="pill" style={{ marginLeft: 6, fontSize: "0.7rem" }}>{pkg.badge}</span>}
               <div style={{ fontSize: "0.75rem", color: "var(--color-muted)" }}>{pkg.code}</div>
             </td>
-            <td><span className="pill muted">{pkg.category === "membership" ? "Membership" : "Konsultasi"}</span></td>
             <td>
               <strong>{formatRupiah(pkg.price)}</strong>
               {pkg.original_price ? <del style={{ display: "block", fontSize: "0.72rem", color: "var(--color-muted)" }}>{formatRupiah(pkg.original_price)}</del> : null}
             </td>
-            <td>{pkg.letter_quota === -1 ? "Tanpa Batas" : (pkg.letter_quota ? `${pkg.letter_quota} surat/bln` : "-")}</td>
-            <td>{pkg.duration_days ? `${pkg.duration_days} hari` : "-"}</td>
+            <td>{pkg.letter_quota === -1 ? "Tanpa Batas" : (pkg.letter_quota == null ? "Belum dikonfigurasi" : pkg.letter_quota + " surat/bln")}</td>
+            <td>{pkg.screening_quota === -1 ? "Tanpa Batas" : pkg.screening_quota === null || pkg.screening_quota === undefined ? "Belum dikonfigurasi" : pkg.screening_quota + "x/bln"}</td>
+            <td>{pkg.duration_days ? pkg.duration_days + " hari" : "Tanpa masa aktif"}</td>
             <td><span className={`pill ${pkg.is_active ? "green" : "gray"}`}>{pkg.is_active ? "Aktif" : "Nonaktif"}</span></td>
           </>
         );
@@ -692,7 +732,7 @@ function initialForm(section: Exclude<Section, "dashboard" | "settings" | "order
     else if (field.name === "features") acc[field.name] = Array.isArray(value) ? value.join("\n") : String(value || "");
     else if (field.name === "tags") acc[field.name] = Array.isArray(value) ? value.join(", ") : String(value || "");
     else if (["focus_tags", "education", "focus", "experience"].includes(field.name)) acc[field.name] = Array.isArray(value) ? value.join("\n") : String(value || "");
-    else acc[field.name] = String(value || "");
+    else acc[field.name] = String(value ?? "");
     return acc;
   }, {});
 }

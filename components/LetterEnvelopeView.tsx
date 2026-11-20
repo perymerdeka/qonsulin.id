@@ -35,17 +35,10 @@ const paperThemeMap: Record<string, { bg: string; color: string; border: string;
     font: "'Nunito', var(--font-body, sans-serif)"
   },
   night_sky: {
-    bg: "#0f172a",
-    color: "#e2e8f0",
-    border: "#334155",
-    seal: "#4338ca",
-    font: "'Nunito', var(--font-body, sans-serif)"
-  },
-  botanical_sage: {
-    bg: "#f0fdf4",
-    color: "#14532d",
-    border: "#bbf7d0",
-    seal: "#15803d",
+    bg: "#f4ead7",
+    color: "#3f2c20",
+    border: "#c9b998",
+    seal: "#8a3328",
     font: "Georgia, serif"
   }
 };

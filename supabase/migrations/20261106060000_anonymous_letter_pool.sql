@@ -18,8 +18,7 @@ insert into public.letter_templates (code, name, paper_style, wax_seal_color, ti
 values
   ('vintage_parchment', 'Kertas Lilin Klasik', 'paper-vintage', '#991b1b', 'free', true, 1),
   ('warm_pastel', 'Senja Tenang Pastel', 'paper-pastel', '#b45309', 'free', true, 2),
-  ('night_sky', 'Langit Malam Sunyi', 'paper-night', '#4338ca', 'premium', true, 3),
-  ('botanical_sage', 'Sage Daun Teduh', 'paper-sage', '#15803d', 'premium', true, 4)
+  ('night_sky', 'Hutan Mawar', 'paper-evergreen-rose', '#8a3328', 'premium', true, 3)
 on conflict (code) do nothing;
 
 -- 2. Letter Threads

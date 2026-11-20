@@ -10,7 +10,7 @@ type SpecialLetter = {
   id: string;
   author_id: string;
   topic: string;
-  special_destination: "mentor" | "counselor";
+  special_destination: "screening" | "mentor" | "counselor";
   handling_status: "waiting" | "assigned" | "in_progress" | "completed" | "needs_attention";
   assigned_companion_id: string | null;
   created_at: string;
@@ -40,6 +40,7 @@ export function AdminOperationsPanel() {
 
   const aliasById = useMemo(() => new Map((payload.members || []).map((member) => [member.id, member.alias || "Member"])), [payload.members]);
   const companionById = useMemo(() => new Map((payload.companions || []).map((companion) => [companion.id, companion])), [payload.companions]);
+  const screeningLetters = useMemo(() => (payload.specialLetters || []).filter((item) => item.special_destination === "screening"), [payload.specialLetters]);
 
   async function load() {
     setLoading(true);
@@ -92,18 +93,18 @@ export function AdminOperationsPanel() {
   }
 
   return <>
-    <div className="admin-title"><div><h1>Surat Tujuan Khusus</h1><p>Surat privat masuk ke admin terlebih dahulu. Disposisi ke profil pendamping tidak membuat akun atau akses dashboard baru.</p></div><button type="button" className="btn btn-white" disabled={loading} onClick={() => void load()}>Muat Ulang</button></div>
+    <div className="admin-title"><div><h1>Permintaan Dukungan Awal</h1><p>Surat dukungan awal masuk ke tim Qonsulin untuk ditinjau dan ditanggapi melalui thread privat.</p></div><button type="button" className="btn btn-white" disabled={loading} onClick={() => void load()}>Muat Ulang</button></div>
     {message && <p className="admin-alert" role="status">{message}</p>}
     {loading ? <div className="admin-card">Memuat surat privat...</div> : <div className="admin-operations-grid">
       <section className="admin-card" style={{ gridColumn: "1 / -1" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}><h2>Inbox Penanganan</h2><span className="pill muted">{payload.specialLetters?.length || 0} Surat</span></div>
-        {(payload.specialLetters || []).length === 0 ? <p style={{ color: "var(--color-muted)" }}>Belum ada surat tujuan khusus.</p> : <div className="operation-list">
-          {payload.specialLetters?.map((item) => {
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}><h2>Inbox Dukungan Awal</h2><span className="pill muted">{screeningLetters.length} Surat</span></div>
+        {screeningLetters.length === 0 ? <p style={{ color: "var(--color-muted)" }}>Belum ada permintaan dukungan awal.</p> : <div className="operation-list">
+          {screeningLetters.map((item) => {
             const draft = draftFor(item);
             const assignee = item.assigned_companion_id ? companionById.get(item.assigned_companion_id) : null;
             const meta = statusMeta[item.handling_status || "waiting"];
             return <article key={item.id} className="support-dispatch-card">
-              <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", alignItems: "flex-start" }}><div><strong>{item.special_destination === "mentor" ? "Surat untuk Mentor" : "Surat untuk Konselor"}</strong><span style={{ display: "block", color: "var(--color-muted)", fontSize: "0.82rem" }}>Pengirim: {aliasById.get(item.author_id) || "Member"} - {formatDate(item.created_at)}</span></div><span className={"pill " + meta.tone}>{meta.label}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", alignItems: "flex-start" }}><div><strong>Permintaan Dukungan Awal</strong><span style={{ display: "block", color: "var(--color-muted)", fontSize: "0.82rem" }}>Pengirim: {aliasById.get(item.author_id) || "Member"} - {formatDate(item.created_at)}</span></div><span className={"pill " + meta.tone}>{meta.label}</span></div>
               <details className="review-content"><summary>Baca isi surat</summary><h3>{item.opening_letter?.title || item.topic}</h3><p>{item.opening_letter?.content || "Isi surat tidak tersedia."}</p></details>
               {assignee && <div className="assigned-box"><UserCheck size={15} style={{ color: "var(--color-brand)" }} /><div><span style={{ fontSize: "0.82rem", fontWeight: 600 }}>Diteruskan ke: {assignee.name}</span><span style={{ display: "block", fontSize: "0.76rem", color: "var(--color-muted)" }}>{assignee.role}</span></div></div>}
               <div className="dispatch-controls">

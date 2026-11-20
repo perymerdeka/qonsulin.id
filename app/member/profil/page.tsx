@@ -32,7 +32,7 @@ function ProfileForm({ profile, onProfileUpdated }: { profile: MemberProfile; on
   }
 
   return <>
-    <header className="member-section-heading"><div><p className="member-eyebrow">SETTINGS</p><h1>Profile</h1><p>Atur nama samaran dan avatar. Identitas pribadimu tidak ditampilkan di surat.</p></div></header>
+    <header className="member-section-heading"><div><p className="member-eyebrow">PENGATURAN</p><h1>Profil & Avatar</h1><p>Atur nama samaran dan avatar yang tampil di suratmu. Identitas pribadimu tetap terlindungi.</p></div></header>
     <form onSubmit={saveProfile} className="member-settings-card member-profile-form">
       <label className="field"><span>Nama samaran</span><input required minLength={3} maxLength={30} value={alias} onChange={(event) => setAlias(event.target.value)} disabled={saving} /><small>3-30 karakter: huruf, angka, spasi, tanda hubung, atau garis bawah.</small></label>
       <label className="field"><span>Bio singkat (opsional)</span><textarea maxLength={160} rows={3} value={bio} onChange={(event) => setBio(event.target.value)} disabled={saving} /><small>Maksimal 160 karakter.</small></label>

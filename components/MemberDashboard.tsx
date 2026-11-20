@@ -2,16 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Ban, CheckCircle2, Ellipsis, Flag, Globe2, Heart, Loader2, Mail, MessageCircle, PenLine, Send, ShieldCheck, X, XCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, Ban, CheckCircle2, Ellipsis, Flag, Globe2, Heart, Loader2, Mail, MessageCircle, PenLine, Send, ShieldCheck, X, XCircle } from "lucide-react";
 import { blockLetterThread, closeLetterThread, defaultTemplates, getActiveTemplates, getMemberLetterThreads, getPoolLetters, getThreadDetail, reportCategoryLabels, reportLetterThread, type LetterItem, type LetterQuota, type LetterTemplate, type LetterThreadDetail, type MemberThreadSummary, type ReportCategory } from "@/lib/letters";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { PackageOrder } from "@/lib/packages";
 import type { MemberNotification } from "@/components/MemberAppShell";
 import { CrisisGuidance } from "@/components/CrisisGuidance";
 import { LetterAEnvelope } from "@/components/LetterAEnvelope";
+import { MemberAvatar } from "@/components/MemberAvatar";
+import type { AvatarConfig } from "@/lib/member";
 
 type MemberDashboardProps = {
   alias?: string;
+  avatarConfig?: AvatarConfig | null;
   memberId: string;
   tier?: "free" | "premium";
   quota: LetterQuota | null;
@@ -31,13 +34,14 @@ function formatRelativeDate(value: string) {
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(new Date(value));
 }
 
-function PaperPreview({ content, templateCode, compact = false, full = false, authorAlias, createdAt, topic }: { content: string; templateCode?: string; compact?: boolean; full?: boolean; authorAlias?: string; createdAt?: string; topic?: string }) {
+function PaperPreview({ content, templateCode, compact = false, full = false, authorAlias, authorAvatar, createdAt, topic }: { content: string; templateCode?: string; compact?: boolean; full?: boolean; authorAlias?: string; authorAvatar?: AvatarConfig | null; createdAt?: string; topic?: string }) {
   const code = templateCode || "vintage_parchment";
-  const isBurgundyLetter = code === "vintage_parchment";
+  const isImageLetter = code === "vintage_parchment" || code === "warm_pastel" || code === "night_sky";
   const dateLabel = createdAt ? formatRelativeDate(createdAt) : "";
   return (
     <div className={`letter-paper-realistic paper-${code}${compact ? " is-compact" : ""}${full ? " is-full" : ""}`}>
-      {isBurgundyLetter ? (
+      {full && <div className="letter-paper-author"><MemberAvatar config={authorAvatar} size={36} title={`Avatar ${authorAlias || "Kawan Anonim"}`} /><div><span>Ditulis anonim oleh</span><strong>{authorAlias || "Kawan Anonim"}</strong></div></div>}
+      {isImageLetter ? (
         <p className="letter-salutation">Untukmu,</p>
       ) : (
         <div className="letterhead">
@@ -52,7 +56,7 @@ function PaperPreview({ content, templateCode, compact = false, full = false, au
         </div>
       )}
       <div className="letter-body-text">{content}</div>
-      <div className={`letter-signoff${isBurgundyLetter ? " letter-signoff-burgundy" : ""}`}>
+      <div className={`letter-signoff${isImageLetter ? " letter-signoff-burgundy" : ""}`}>
         <span className="letter-signoff-sender">Tertanda, {authorAlias || "Kawan Anonim"}</span>
         <span className="letter-signoff-quote">Dari hati, untukmu</span>
       </div>
@@ -62,6 +66,8 @@ function PaperPreview({ content, templateCode, compact = false, full = false, au
 
 function EnvelopePreview({ templateCode, label, closed = false }: { templateCode?: string; label: string; closed?: boolean }) {
   if (!templateCode || templateCode === "vintage_parchment") return <LetterAEnvelope closed={closed} compact />;
+  if (templateCode === "warm_pastel") return <LetterAEnvelope closed={closed} compact variant="golden" />;
+  if (templateCode === "night_sky") return <LetterAEnvelope closed={closed} compact variant="emerald" />;
   return (
     <div className={`member-letter-envelope envelope-${templateCode || "vintage_parchment"}`} aria-hidden="true">
       <div className="member-letter-envelope-flap" />
@@ -70,6 +76,12 @@ function EnvelopePreview({ templateCode, label, closed = false }: { templateCode
     </div>
   );
 }
+
+const replyThemeArtwork: Record<string, { image: string; motif: string }> = {
+  vintage_parchment: { image: "/member/letter-a/letter-a-stage-closed.png", motif: "Lilin klasik" },
+  warm_pastel: { image: "/member/letter-b/letter-b-stage-closed.png", motif: "Bunga emas" },
+  night_sky: { image: "/member/letter-c/letter-c-stage-closed.png", motif: "Mawar hutan" }
+};
 
 const reasonOptions: ReportCategory[] = [
   "personal_data", "harassment", "hate_speech",
@@ -83,6 +95,7 @@ function ThreadDialog({ threadId, memberId, tier, onClose, onThreadUpdated }: { 
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [replyTemplate, setReplyTemplate] = useState("vintage_parchment");
+  const [replyTemplates, setReplyTemplates] = useState<LetterTemplate[]>(defaultTemplates);
   const [replySending, setReplySending] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; message: string } | null>(null);
 
@@ -97,9 +110,14 @@ function ThreadDialog({ threadId, memberId, tier, onClose, onThreadUpdated }: { 
     let active = true;
     async function loadThread() {
       setLoading(true);
-      const detail = await getThreadDetail(threadId);
+      const [detail, availableTemplates] = await Promise.all([getThreadDetail(threadId), getActiveTemplates()]);
       if (active) {
         setThread(detail);
+        const supportedTemplates = availableTemplates.filter((item) => replyThemeArtwork[item.code]);
+        setReplyTemplates(supportedTemplates);
+        const startingTemplate = supportedTemplates.find((item) => item.code === detail?.opening_letter.template_code && (item.tier_required === "free" || tier === "premium"))
+          || supportedTemplates.find((item) => item.tier_required === "free");
+        if (startingTemplate) setReplyTemplate(startingTemplate.code);
         setLoading(false);
       }
     }
@@ -113,7 +131,15 @@ function ThreadDialog({ threadId, memberId, tier, onClose, onThreadUpdated }: { 
       setIsOpening(false);
       return;
     }
-    const timer = window.setTimeout(() => setIsOpening(false), 1100);
+    const hasFrameSequence =
+      !thread.opening_letter.template_code ||
+      thread.opening_letter.template_code === "vintage_parchment" ||
+      thread.opening_letter.template_code === "warm_pastel" ||
+      thread.opening_letter.template_code === "night_sky";
+    const timer = window.setTimeout(
+      () => setIsOpening(false),
+      hasFrameSequence ? 3500 : 1100
+    );
     return () => window.clearTimeout(timer);
   }, [thread?.id]);
 
@@ -201,6 +227,7 @@ function ThreadDialog({ threadId, memberId, tier, onClose, onThreadUpdated }: { 
 
   const isAuthor = thread?.opening_letter.sender_id === memberId;
   const isParticipant = isAuthor || Boolean(thread?.replies.some((r) => r.sender_id === memberId));
+  const selectedReplyTheme = replyTemplates.find((item) => item.code === replyTemplate);
 
   return (
     <div className="member-thread-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -209,8 +236,8 @@ function ThreadDialog({ threadId, memberId, tier, onClose, onThreadUpdated }: { 
 
         {loading ? <p className="member-empty-state">Membuka lembaran surat...</p> : !thread ? <p className="member-empty-state">Surat tidak dapat dibuka.</p> : isOpening ? (
           <div className="member-letter-opening" role="status" aria-label="Membuka amplop surat">
-            {thread.opening_letter.template_code === "vintage_parchment"
-              ? <LetterAEnvelope opening />
+            {!thread.opening_letter.template_code || thread.opening_letter.template_code === "vintage_parchment" || thread.opening_letter.template_code === "warm_pastel" || thread.opening_letter.template_code === "night_sky"
+              ? <LetterAEnvelope content={thread.opening_letter.content} variant={thread.opening_letter.template_code === "warm_pastel" ? "golden" : thread.opening_letter.template_code === "night_sky" ? "emerald" : "burgundy"} opening onOpeningComplete={() => setIsOpening(false)} />
               : <div className={`member-envelope-art is-opening envelope-${thread.opening_letter.template_code}`} aria-hidden="true">
                   <div className="member-envelope-flap" />
                   <div className="member-envelope-letterhead-preview"><div className="member-envelope-letterhead-header"><span>Surat untukmu</span></div><div className="member-envelope-letterhead-body">Sebuah cerita dari {thread.opening_letter.author_alias || "Kawan Anonim"}</div></div>
@@ -253,6 +280,7 @@ function ThreadDialog({ threadId, memberId, tier, onClose, onThreadUpdated }: { 
                 content={thread.opening_letter.content}
                 templateCode={thread.opening_letter.template_code}
                 authorAlias={thread.opening_letter.author_alias || "Kawan Anonim"}
+                authorAvatar={thread.opening_letter.author_avatar}
                 createdAt={thread.opening_letter.created_at}
                 topic={thread.topic}
                 full
@@ -271,6 +299,7 @@ function ThreadDialog({ threadId, memberId, tier, onClose, onThreadUpdated }: { 
                       content={reply.content}
                       templateCode={reply.template_code}
                       authorAlias={reply.operator_reply ? "Tim Qonsulin" : (reply.author_alias || "Kawan Cerita")}
+                      authorAvatar={reply.author_avatar}
                       createdAt={reply.created_at}
                       topic={`Balasan untuk: ${thread.topic}`}
                       full
@@ -291,15 +320,30 @@ function ThreadDialog({ threadId, memberId, tier, onClose, onThreadUpdated }: { 
                   <div>
                     <h4><Heart size={16} style={{ color: "var(--color-brand)" }} /> Tuliskan Balasanmu Dari Hati</h4>
                     <p style={{ margin: "0 0 0.8rem", color: "#666", fontSize: "0.82rem" }}>Balasan akan disematkan sebagai lembar surat dan dimoderasi demi keamanan komunitas.</p>
-                    <textarea
-                      value={replyContent}
-                      onChange={(e) => setReplyContent(e.target.value)}
-                      placeholder="Tuliskan kata-kata penguat atau refleksi penuh empati..."
-                      maxLength={3000}
-                      rows={5}
-                      disabled={replySending}
-                      autoFocus
-                    />
+                    <div className="member-reply-theme-heading"><strong>Tema balasan</strong><span>{thread.opening_letter.template_code === replyTemplate ? "Mengikuti tema surat ini" : "Tema pilihanmu"}</span></div>
+                    <div className="member-reply-theme-picker" role="group" aria-label="Pilih tema balasan">
+                      {replyTemplates.map((item) => {
+                        const artwork = replyThemeArtwork[item.code];
+                        const locked = item.tier_required === "premium" && tier !== "premium";
+                        return <button key={item.code} type="button" className={`member-reply-theme-option is-${item.code}${replyTemplate === item.code ? " is-selected" : ""}`} aria-pressed={replyTemplate === item.code} aria-label={`${item.name}${locked ? ", khusus Member Premium" : ""}`} disabled={locked || replySending} onClick={() => setReplyTemplate(item.code)}><span className="member-reply-theme-art"><img src={artwork.image} alt="" /></span><span className="member-reply-theme-details"><strong>{item.name}</strong><small>{artwork.motif}</small></span><span className="member-reply-theme-state">{locked ? "Premium" : replyTemplate === item.code ? "Dipilih" : "Pilih"}</span></button>;
+                      })}
+                    </div>
+                    {tier !== "premium" && replyTemplates.some((item) => item.tier_required === "premium") && <p className="member-reply-theme-upgrade">Tema Hutan Mawar khusus Member Premium. <Link href="/member/akun">Lihat paket</Link></p>}
+                    <div className={`member-letter-editor member-reply-paper paper-${replyTemplate}`}>
+                      <span className="member-reply-paper-motif" aria-hidden="true">{replyThemeArtwork[replyTemplate]?.motif}</span>
+                      <p className="member-letter-editor-salutation">Untukmu,</p>
+                      <textarea
+                        value={replyContent}
+                        onChange={(e) => setReplyContent(e.target.value)}
+                        placeholder="Tuliskan kata-kata penguat atau refleksi penuh empati..."
+                        maxLength={3000}
+                        rows={5}
+                        disabled={replySending}
+                        autoFocus
+                      />
+                      <p>Dari hati, untukmu</p>
+                    </div>
+                    <p className="member-reply-theme-confirmation">Balasan akan dikirim dengan tema: <strong>{selectedReplyTheme?.name || "Kertas Lilin Klasik"}</strong></p>
                     <div className="member-sheet-reply-actions">
                       <span style={{ fontSize: "0.78rem", color: "#888" }}>{replyContent.length}/3000 karakter</span>
                       <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -395,16 +439,16 @@ export function createNotifications(outbox: MemberThreadSummary[], inbox: Member
   return [...replyNotifications, ...moderationNotifications].sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime());
 }
 
-export function MemberDashboard({ alias, memberId, tier, quota, orders, onLetterSent, onNotificationsChange }: MemberDashboardProps) {
+export function MemberDashboard({ alias, avatarConfig, memberId, tier, quota, orders, onLetterSent, onNotificationsChange }: MemberDashboardProps) {
   const [poolLetters, setPoolLetters] = useState<LetterItem[]>([]);
   const [outbox, setOutbox] = useState<MemberThreadSummary[]>([]);
   const [inbox, setInbox] = useState<MemberThreadSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedError, setFeedError] = useState(false);
   const [activeTab, setActiveTab] = useState<LetterTab>("mine");
+  const [mobileView, setMobileView] = useState<"public" | "yours">("public");
   const [selectedTemplate, setSelectedTemplate] = useState("vintage_parchment");
   const [deliveryMode, setDeliveryMode] = useState<"public" | "special">("public");
-  const [destination, setDestination] = useState<"mentor" | "counselor">("mentor");
   const [templates, setTemplates] = useState<LetterTemplate[]>(defaultTemplates);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -413,6 +457,7 @@ export function MemberDashboard({ alias, memberId, tier, quota, orders, onLetter
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [showCrisisGuidance, setShowCrisisGuidance] = useState(false);
   const composeDialogRef = useRef<HTMLDialogElement>(null);
+  const effectiveTier = quota?.tier || tier || "free";
 
   async function loadLists() {
     const [pool, myLetters, incomingLetters] = await Promise.all([getPoolLetters(), getMemberLetterThreads("outbox"), getMemberLetterThreads("inbox")]);
@@ -493,13 +538,13 @@ export function MemberDashboard({ alias, memberId, tier, quota, orders, onLetter
     try {
       const { data, error } = deliveryMode === "public"
         ? await supabase.rpc("send_opening_letter", { p_topic: "Luapan Hati", p_title: null, p_content: draft.trim(), p_template_code: selectedTemplate })
-        : await supabase.rpc("send_special_letter", { p_destination: destination, p_title: null, p_content: draft.trim(), p_template_code: selectedTemplate });
+        : await supabase.rpc("send_special_letter", { p_destination: "screening", p_title: null, p_content: draft.trim(), p_template_code: selectedTemplate });
       if (error || !data?.ok) {
         setFeedback(data?.message || error?.message || "Surat belum berhasil dikirim.");
         return;
       }
       setDraft("");
-      setFeedback(data.is_crisis_hold ? "Surat tersimpan dan sedang ditinjau dengan perhatian khusus." : deliveryMode === "special" ? "Surat privat terkirim ke admin untuk diteruskan kepada pendamping." : "Surat terkirim dan menunggu moderasi sebelum tampil di Kolam Surat.");
+      setFeedback(data.is_crisis_hold ? "Surat tersimpan dan sedang ditinjau dengan perhatian khusus." : deliveryMode === "special" ? "Permintaan dukungan awalmu sudah masuk ke tim Qonsulin." : "Surat terkirim dan menunggu moderasi sebelum tampil di Kolam Surat.");
       setIsComposeOpen(false);
       setShowCrisisGuidance(Boolean(data.is_crisis_hold));
       await Promise.all([loadLists(), onLetterSent()]);
@@ -513,14 +558,18 @@ export function MemberDashboard({ alias, memberId, tier, quota, orders, onLetter
   }
 
   return (
-    <div className="member-letter-dashboard">
+    <div className={`member-letter-dashboard is-mobile-${mobileView}`}>
+      <div className="member-mobile-tabs" role="tablist" aria-label="Area surat">
+        <button type="button" role="tab" aria-selected={mobileView === "public"} className={mobileView === "public" ? "is-active" : undefined} onClick={() => setMobileView("public")}>Kolam Surat</button>
+        <button type="button" role="tab" aria-selected={mobileView === "yours"} className={mobileView === "yours" ? "is-active" : undefined} onClick={() => setMobileView("yours")}>Ruang Suratmu</button>
+      </div>
       <section className="member-public-column">
         <div className="member-section-heading"><div><h1>Public Letter</h1></div></div>
         <div className="member-public-feed">
           {loading ? <p className="member-empty-state">Memuat surat publik...</p> : feedError ? <p className="member-empty-state">Surat belum bisa dimuat. Coba buka Kolam Surat.</p> : poolLetters.length === 0 ? <div className="member-empty-state"><Mail size={22} /> Belum ada surat publik untuk ditampilkan.</div> : poolLetters.map((letter) => (
             <article className="member-public-letter" key={letter.id}>
               <button type="button" className="member-thread-trigger" onClick={() => setSelectedThreadId(letter.thread_id)}>
-                <div className="member-letter-meta"><span className="member-avatar-dot">{letter.author_alias?.slice(0, 1).toUpperCase() || "K"}</span><strong>{letter.author_alias || "Kawan Anonim"}</strong><time>{formatRelativeDate(letter.created_at)}</time><Ellipsis size={19} /></div>
+                <div className="member-letter-meta"><MemberAvatar config={letter.author_avatar} size={30} title={`Avatar ${letter.author_alias || "Kawan Anonim"}`} /><strong>{letter.author_alias || "Kawan Anonim"}</strong><time>{formatRelativeDate(letter.created_at)}</time><Ellipsis size={19} /></div>
                 <EnvelopePreview templateCode={letter.template_code} label={letter.topic || "Sebuah cerita untukmu"} closed />
                 <p className="member-letter-intro">{letter.content}</p>
                 <span className="member-letter-open-label">Buka surat</span>
@@ -535,11 +584,11 @@ export function MemberDashboard({ alias, memberId, tier, quota, orders, onLetter
         <section className="member-compose-card">
           <div className="member-send-mode" aria-label="Pilihan tujuan surat">
             <button type="button" className={deliveryMode === "public" ? "is-selected" : undefined} aria-pressed={deliveryMode === "public"} onClick={() => { setDeliveryMode("public"); setFeedback(""); }}><Globe2 size={18} /> Kirim Publik</button>
-            <button type="button" className={deliveryMode === "special" ? "is-selected" : undefined} aria-pressed={deliveryMode === "special"} onClick={() => { setDeliveryMode("special"); setFeedback(""); }}><Mail size={18} /> Kirim Tujuan Khusus</button>
+            <button type="button" className={deliveryMode === "special" ? "is-selected" : undefined} aria-pressed={deliveryMode === "special"} onClick={() => { setDeliveryMode("special"); setFeedback(""); }}><Mail size={18} /> Minta Dukungan</button>
           </div>
-          {deliveryMode === "special" && <label className="field"><span>Tujuan surat privat</span><select value={destination} onChange={(event) => setDestination(event.target.value as "mentor" | "counselor")}><option value="mentor">Mentor / Teman Dengar</option><option value="counselor">Konselor / Psikolog</option></select><small>Surat dikirim ke admin untuk diteruskan dan tidak tampil di Kolam Surat. Paket tujuan harus aktif.</small></label>}
+          {deliveryMode === "special" && <div className="member-support-note"><strong>Permintaan dukungan awal</strong><small>Gratis {quota?.screening_limit === -1 ? "tanpa batas" : `${quota?.screening_remaining ?? 0} dari ${quota?.screening_limit ?? 0}`} permintaan tersisa bulan ini. Tim Qonsulin akan meninjau suratmu; ini bukan sesi konsultasi atau layanan darurat.</small></div>}
           <div className="member-template-stage">
-            {template.code === "vintage_parchment" ? <LetterAEnvelope /> :
+            {template.code === "vintage_parchment" ? <LetterAEnvelope /> : template.code === "warm_pastel" ? <LetterAEnvelope variant="golden" /> : template.code === "night_sky" ? <LetterAEnvelope variant="emerald" /> :
               <div className={`member-envelope-art is-preview envelope-${template.code}`} aria-label={`Preview template ${template.name}`}>
                 <div className="member-envelope-flap" />
                 <div className="member-envelope-letterhead-preview">
@@ -552,38 +601,55 @@ export function MemberDashboard({ alias, memberId, tier, quota, orders, onLetter
                 <div className="member-envelope-seal">Q</div>
               </div>}
             <div className="member-template-picker" aria-label="Pilih template surat">
-              {templates.map((item) => <button key={item.code} type="button" className={selectedTemplate === item.code ? "is-selected" : undefined} disabled={item.tier_required === "premium" && tier !== "premium"} aria-label={item.name} aria-pressed={selectedTemplate === item.code} title={item.tier_required === "premium" && tier !== "premium" ? `${item.name} tersedia untuk Premium` : item.name} onClick={() => setSelectedTemplate(item.code)}><span className={`member-template-thumbnail envelope-${item.code}${item.code === "vintage_parchment" ? " letter-a-thumbnail" : ""}`}><i /><b>{item.code === "vintage_parchment" ? "" : "Q"}</b></span></button>)}
+              {templates.map((item) => {
+                const thumbnail = item.code === "vintage_parchment"
+                  ? "/member/letter-a/letter-a-stage-closed.png"
+                  : item.code === "warm_pastel"
+                    ? "/member/letter-b/letter-b-stage-closed.png"
+                    : item.code === "night_sky"
+                      ? "/member/letter-c/letter-c-stage-closed.png"
+                      : null;
+                return <button key={item.code} type="button" className={selectedTemplate === item.code ? "is-selected" : undefined} disabled={item.tier_required === "premium" && effectiveTier !== "premium"} aria-label={item.name} aria-pressed={selectedTemplate === item.code} title={item.tier_required === "premium" && effectiveTier !== "premium" ? `${item.name} tersedia untuk Premium` : item.name} onClick={() => setSelectedTemplate(item.code)}><span className={`member-template-thumbnail envelope-${item.code}${thumbnail ? " is-image" : ""}`}>{thumbnail ? <img src={thumbnail} alt="" /> : <><i /><b>Q</b></>}</span></button>;
+              })}
             </div>
           </div>
           <p className="member-selected-template">Tema surat: {template.name}</p>
           <button type="button" className="btn btn-primary member-write-button" onClick={() => { setFeedback(""); setIsComposeOpen(true); }}><PenLine size={18} /> Tulis Surat</button>
-          {tier !== "premium" && quota && <p className="member-compose-note">Sisa {quota.remaining} dari {quota.limit} surat pembuka bulan ini.</p>}
+          {effectiveTier !== "premium" && quota && <p className="member-compose-note">Sisa {quota.remaining} dari {quota.limit} surat pembuka bulan ini.</p>}
           {!isComposeOpen && feedback && <p className="member-compose-feedback" role="status">{feedback}</p>}
           <div className="member-letter-tabs" role="tablist" aria-label="Status surat saya">
             {tabs.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} className={activeTab === tab.id ? "is-active" : undefined} onClick={() => setActiveTab(tab.id)}>{tab.label}{typeof tab.count === "number" && tab.count > 0 ? <span>{tab.count}</span> : null}</button>)}
           </div>
 
-            <div className="member-own-letter-list">
-              {visibleLetters.length === 0 ? <p className="member-empty-state">Belum ada surat pada kategori ini.</p> : visibleLetters.map((letter, index) => <button type="button" key={`${letter.id}-${letter.created_at}-${index}`} className="member-own-letter" onClick={() => setSelectedThreadId(letter.id)}><div className="member-letter-meta"><span className="member-avatar-dot">{activeTab === "inbox" ? (letter.author_alias || "K").slice(0, 1).toUpperCase() : (alias || "T").slice(0, 1).toUpperCase()}</span><strong>{activeTab === "inbox" ? letter.author_alias || "Kawan Cerita" : alias || "Teman Cerita"}</strong><time>{formatRelativeDate(letter.created_at)}</time><Ellipsis size={19} /></div><EnvelopePreview templateCode={letter.template_code} label={letter.topic} /><p className="member-letter-teaser">{letter.preview}</p><span className="member-letter-status">{letter.delivery_mode === "special" ? "Privat - " + ({ waiting: "Menunggu penugasan", assigned: "Sudah ditugaskan", in_progress: "Sedang diproses", completed: "Selesai", needs_attention: "Perlu perhatian khusus" }[letter.handling_status || "waiting"]) : letter.moderation_status === "pending" ? "Menunggu moderasi" : letter.moderation_status === "crisis_hold" ? "Ditahan untuk tinjauan" : letter.moderation_status === "rejected" ? "Ditolak" : "Disetujui"}</span></button>)}
+            <div className="member-own-letter-list" data-letter-tab={activeTab}>
+              {visibleLetters.length === 0 ? <p className="member-empty-state">Belum ada surat pada kategori ini.</p> : activeTab === "review" ? visibleLetters.map((letter) => (
+                <article key={letter.id} className="member-review-letter">
+                  <div className="member-review-envelope"><EnvelopePreview templateCode={letter.template_code} label={letter.topic} closed /></div>
+                  <div className="member-review-content">
+                    <p>{letter.moderation_status === "crisis_hold" ? "Surat Anda sedang ditinjau secara khusus. Mohon menunggu pembaruan dari tim Qonsulin." : "Untuk menghindari adanya pelanggaran, surat Anda kami tinjau sebelum dipublikasikan ke ruang publik. Mohon menunggu!"}</p>
+                    <span className="member-review-note"><AlertCircle size={18} aria-hidden="true" /> {letter.delivery_mode === "special" ? "Setelah ditinjau, surat privat Anda akan diteruskan ke tujuan yang dipilih." : "Setelah ditinjau surat Anda akan langsung tampil di Public Letter."}</span>
+                  </div>
+                </article>
+              )) : visibleLetters.map((letter, index) => <button type="button" key={`${letter.id}-${letter.created_at}-${index}`} className="member-own-letter" onClick={() => setSelectedThreadId(letter.id)}><div className="member-letter-meta"><MemberAvatar config={activeTab === "inbox" ? letter.author_avatar : avatarConfig} size={30} title={`Avatar ${activeTab === "inbox" ? letter.author_alias || "Kawan Cerita" : alias || "Teman Cerita"}`} /><strong>{activeTab === "inbox" ? letter.author_alias || "Kawan Cerita" : alias || "Teman Cerita"}</strong><time>{formatRelativeDate(letter.created_at)}</time><Ellipsis size={19} /></div><EnvelopePreview templateCode={letter.template_code} label={letter.topic} closed /><p className="member-letter-teaser">{letter.preview}</p><span className="member-letter-status">{letter.delivery_mode === "special" ? "Privat - " + ({ waiting: "Menunggu penugasan", assigned: "Sudah ditugaskan", in_progress: "Sedang diproses", completed: "Selesai", needs_attention: "Perlu perhatian khusus" }[letter.handling_status || "waiting"]) : letter.moderation_status === "pending" ? "Menunggu moderasi" : letter.moderation_status === "crisis_hold" ? "Ditahan untuk tinjauan" : letter.moderation_status === "rejected" ? "Ditolak" : "Disetujui"}</span></button>)}
             </div>
 
         </section>
         {orders.some((order) => order.status === "pending") && <p className="member-order-notice">Ada pesanan paket yang menunggu verifikasi transfer.</p>}
         <footer className="member-dashboard-footer"><ShieldCheck size={14} /> Identitasmu tetap menggunakan nama samaran.</footer>
       </aside>
-      {selectedThreadId && <ThreadDialog threadId={selectedThreadId} memberId={memberId} tier={tier} onClose={() => setSelectedThreadId(null)} onThreadUpdated={() => { void loadLists(); void onLetterSent(); }} />}
+      {selectedThreadId && <ThreadDialog threadId={selectedThreadId} memberId={memberId} tier={effectiveTier} onClose={() => setSelectedThreadId(null)} onThreadUpdated={() => { void loadLists(); void onLetterSent(); }} />}
       <CrisisGuidance open={showCrisisGuidance} onClose={() => setShowCrisisGuidance(false)} />
       <dialog ref={composeDialogRef} className="member-compose-dialog" aria-labelledby="member-compose-title" onCancel={(event) => { event.preventDefault(); if (!sending) setIsComposeOpen(false); }}>
           <button type="button" className="member-thread-close" onClick={() => setIsComposeOpen(false)} disabled={sending} aria-label="Tutup form surat"><X size={19} /></button>
-          <p className="member-eyebrow">{deliveryMode === "public" ? "KIRIM PUBLIK" : "KIRIM TUJUAN KHUSUS"}</p>
+          <p className="member-eyebrow">{deliveryMode === "public" ? "KIRIM PUBLIK" : "DUKUNGAN AWAL"}</p>
           <h2 id="member-compose-title">Tulis suratmu</h2>
-          <p className="member-compose-dialog-copy">{deliveryMode === "public" ? "Surat akan ditinjau moderasi sebelum tampil di Kolam Surat." : "Surat privat untuk " + (destination === "mentor" ? "mentor" : "konselor") + " masuk ke admin terlebih dahulu dan tidak tampil di Kolam Surat."}</p>
+          <p className="member-compose-dialog-copy">{deliveryMode === "public" ? "Surat akan ditinjau moderasi sebelum tampil di Kolam Surat." : "Ceritakan kebutuhanmu agar tim Qonsulin dapat mengarahkan dukungan yang sesuai. Ini bukan sesi konsultasi psikolog atau layanan darurat."}</p>
           <div className={`member-letter-editor paper-${template.code}`}>
-            {template.code === "vintage_parchment" ? <p className="member-letter-editor-salutation">Untukmu,</p> : <div className="member-letter-editor-heading"><span>Surat dari {alias || "Kawan Anonim"}</span><span>{template.name}</span></div>}
+            {(template.code === "vintage_parchment" || template.code === "warm_pastel" || template.code === "night_sky") ? <p className="member-letter-editor-salutation">Untukmu,</p> : <div className="member-letter-editor-heading"><span>Surat dari {alias || "Kawan Anonim"}</span><span>{template.name}</span></div>}
             <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Tulis suratmu di sini..." aria-label="Isi surat" maxLength={3000} disabled={sending} autoFocus />
             <p>Dari hati, {alias || "Kawan Anonim"}</p>
           </div>
-          <div className="member-compose-actions"><span>{draft.length}/3000</span><button type="button" className="btn btn-primary" disabled={sending} onClick={sendOpeningLetter}><Send size={17} /> {sending ? "Mengirim..." : deliveryMode === "public" ? "Kirim Publik" : "Kirim Surat Privat"}</button></div>
+          <div className="member-compose-actions"><span>{draft.length}/3000</span><button type="button" className="btn btn-primary" disabled={sending} onClick={sendOpeningLetter}><Send size={17} /> {sending ? "Mengirim..." : deliveryMode === "public" ? "Kirim Publik" : "Kirim Permintaan"}</button></div>
           {feedback && <p className="member-compose-feedback" role="status">{feedback}</p>}
       </dialog>
     </div>

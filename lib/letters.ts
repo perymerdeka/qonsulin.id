@@ -1,5 +1,5 @@
 import { getSupabasePublicClient, getSupabaseClient } from "@/lib/supabase";
-import { MemberProfile } from "@/lib/member";
+import { type AvatarConfig, MemberProfile } from "@/lib/member";
 
 export type ReplyType = "community" | "volunteer" | "professional";
 
@@ -36,7 +36,7 @@ export type LetterThreadDetail = {
   topic: string;
   status: "open" | "closed" | "blocked" | "flagged";
   delivery_mode: "public" | "special";
-  special_destination?: "mentor" | "counselor" | null;
+  special_destination?: "screening" | "mentor" | "counselor" | null;
   handling_status?: "waiting" | "assigned" | "in_progress" | "completed" | "needs_attention" | null;
   created_at: string;
   opening_letter: LetterItem;
@@ -49,6 +49,11 @@ export type LetterQuota = {
   limit: number;
   remaining: number;
   can_send: boolean;
+  screening_used?: number;
+  screening_limit?: number;
+  screening_remaining?: number;
+  can_request_screening?: boolean;
+  has_open_screening?: boolean;
 };
 
 export const defaultTemplates: LetterTemplate[] = [
@@ -65,9 +70,9 @@ export const defaultTemplates: LetterTemplate[] = [
   {
     id: "tpl-2",
     code: "warm_pastel",
-    name: "Senja Tenang Pastel",
-    paper_style: "paper-pastel",
-    wax_seal_color: "#b45309",
+    name: "Kertas Krem Bunga",
+    paper_style: "paper-golden-bloom",
+    wax_seal_color: "#d6ae4f",
     tier_required: "free",
     is_active: true,
     sort_order: 2
@@ -75,23 +80,13 @@ export const defaultTemplates: LetterTemplate[] = [
   {
     id: "tpl-3",
     code: "night_sky",
-    name: "Langit Malam Sunyi",
-    paper_style: "paper-night",
-    wax_seal_color: "#4338ca",
+    name: "Hutan Mawar",
+    paper_style: "paper-evergreen-rose",
+    wax_seal_color: "#8a3328",
     tier_required: "premium",
     is_active: true,
     sort_order: 3
   },
-  {
-    id: "tpl-4",
-    code: "botanical_sage",
-    name: "Sage Daun Teduh",
-    paper_style: "paper-sage",
-    wax_seal_color: "#15803d",
-    tier_required: "premium",
-    is_active: true,
-    sort_order: 4
-  }
 ];
 
 export const replyTypeLabels: Record<ReplyType, { label: string; badgeClass: string; icon: string }> = {
@@ -233,7 +228,7 @@ export type MemberThreadSummary = {
   topic: string;
   status: "open" | "closed" | "blocked" | "flagged";
   delivery_mode: "public" | "special";
-  special_destination?: "mentor" | "counselor" | null;
+  special_destination?: "screening" | "mentor" | "counselor" | null;
   handling_status?: "waiting" | "assigned" | "in_progress" | "completed" | "needs_attention" | null;
   created_at: string;
   moderation_status: "pending" | "approved" | "rejected" | "crisis_hold";
@@ -242,6 +237,7 @@ export type MemberThreadSummary = {
   preview: string;
   title?: string | null;
   author_alias?: string;
+  author_avatar?: AvatarConfig | null;
 };
 
 export async function getMemberLetterThreads(scope: "inbox" | "outbox"): Promise<MemberThreadSummary[]> {
@@ -296,8 +292,8 @@ export async function getMemberLetterThreads(scope: "inbox" | "outbox"): Promise
       .limit(60);
     if (repliesError || !replyRows) return [];
     const senderIds = [...new Set(replyRows.map((row: any) => row.sender_id).filter(Boolean))];
-    const { data: profiles } = senderIds.length ? await supabase.from("member_profiles").select("id, alias").in("id", senderIds) : { data: [] };
-    const aliasById = new Map<string, string>((profiles || []).map((profile: any) => [profile.id, profile.alias]));
+    const { data: profiles } = senderIds.length ? await supabase.from("member_profiles").select("id, alias, avatar_config").in("id", senderIds) : { data: [] };
+    const profilesById = new Map<string, Pick<MemberProfile, "alias" | "avatar_config">>((profiles || []).map((profile: any) => [profile.id, profile]));
     const communityReplies: MemberThreadSummary[] = replyRows.map((row: any) => ({
       id: row.thread_id,
       topic: row.letter_threads?.topic || "Luapan Hati",
@@ -311,7 +307,8 @@ export async function getMemberLetterThreads(scope: "inbox" | "outbox"): Promise
       template_code: row.template_code,
       title: row.title,
       preview: row.content,
-      author_alias: row.operator_reply ? "Tim Qonsulin" : aliasById.get(row.sender_id) || "Kawan Anonim"
+      author_alias: row.operator_reply ? "Tim Qonsulin" : profilesById.get(row.sender_id)?.alias || "Kawan Anonim",
+      author_avatar: row.operator_reply ? null : profilesById.get(row.sender_id)?.avatar_config || null
     }));
     return communityReplies.sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime());
   } catch {

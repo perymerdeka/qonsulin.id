@@ -19,6 +19,8 @@ const tableBySection: Record<CmsSection, string> = {
   letters: "letters"
 };
 
+const membershipPackageCodes = new Set(["member_free", "member_premium"]);
+
 function authorized(request: NextRequest) {
   return verifyAdminSessionValue(request.cookies.get(adminCookieName)?.value);
 }
@@ -76,6 +78,7 @@ function normalizePayload(section: CmsSection, payload: Record<string, unknown>,
     if ("original_price" in normalized) normalized.original_price = normalized.original_price !== "" && normalized.original_price !== null ? Number(normalized.original_price) : null;
     if ("duration_days" in normalized) normalized.duration_days = normalized.duration_days !== "" && normalized.duration_days !== null ? Number(normalized.duration_days) : null;
     if ("letter_quota" in normalized) normalized.letter_quota = normalized.letter_quota !== "" && normalized.letter_quota !== null ? Number(normalized.letter_quota) : null;
+    if ("screening_quota" in normalized) normalized.screening_quota = normalized.screening_quota !== "" && normalized.screening_quota !== null ? Number(normalized.screening_quota) : null;
     if ("is_active" in normalized) normalized.is_active = Boolean(normalized.is_active);
     if ("features" in normalized && typeof normalized.features === "string") {
       normalized.features = splitList(normalized.features, true);
@@ -108,7 +111,7 @@ export async function GET(request: NextRequest) {
     supabase.from("gallery_events").select("*").order("created_at", { ascending: false }),
     supabase.from("streaming_videos").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
     supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
-    supabase.from("consultation_packages").select("*").order("sort_order", { ascending: true }),
+    supabase.from("consultation_packages").select("*").eq("category", "membership").in("code", [...membershipPackageCodes]).order("sort_order", { ascending: true }),
     supabase.from("member_profiles").select("*").order("created_at", { ascending: false }),
     supabase.from("package_orders").select("*").order("created_at", { ascending: false }).limit(100),
     supabase.from("letters").select("id, thread_id, sender_id, is_opening, reply_type, title, content, template_code, moderation_status, created_at, reviewed_at, review_note, letter_threads!inner(delivery_mode)").eq("letter_threads.delivery_mode", "public").order("created_at", { ascending: false }).limit(100)
@@ -127,7 +130,7 @@ export async function GET(request: NextRequest) {
       supabase.from("gallery_events").select("*").order("created_at", { ascending: false }),
       supabase.from("streaming_videos").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
       supabase.from("companions").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
-    supabase.from("consultation_packages").select("*").order("sort_order", { ascending: true }),
+    supabase.from("consultation_packages").select("*").eq("category", "membership").in("code", [...membershipPackageCodes]).order("sort_order", { ascending: true }),
     supabase.from("member_profiles").select("*").order("created_at", { ascending: false }),
     supabase.from("package_orders").select("*").order("created_at", { ascending: false }).limit(100),
     supabase.from("letters").select("id, thread_id, sender_id, is_opening, reply_type, title, content, template_code, moderation_status, created_at, reviewed_at, review_note, letter_threads!inner(delivery_mode)").eq("letter_threads.delivery_mode", "public").order("created_at", { ascending: false }).limit(100)
@@ -154,7 +157,7 @@ export async function GET(request: NextRequest) {
       companions: companionsRes.data || [],
       packages: packagesRes?.data || [],
       members: membersRes?.data || [],
-      orders: ordersRes?.data || [],
+      orders: (ordersRes?.data || []).filter((order: { package_code?: string }) => membershipPackageCodes.has(order.package_code || "")),
       letters: lettersRes?.data || []
     }
   });
@@ -168,7 +171,7 @@ const allowedColumns: Record<CmsSection, string[]> = {
   galleries: ["title", "slug", "description", "cover_image_url", "source_url", "event_date", "status"],
   streaming: ["title", "slug", "description", "video_url", "thumbnail_url", "source_label", "stream_type", "published_at", "live_at", "sort_order", "is_featured", "status"],
   companions: ["name", "role", "badge", "credential", "image_url", "description", "preview", "focus_tags", "education", "focus", "experience", "languages", "cta_enabled", "sort_order", "status"],
-  packages: ["code", "name", "category", "price", "original_price", "duration_days", "letter_quota", "description", "badge", "features", "is_active", "sort_order"],
+  packages: ["price", "original_price", "duration_days", "letter_quota", "screening_quota", "description", "badge", "features", "is_active", "sort_order"],
   members: ["tier", "role", "bio", "alias"],
   orders: [],
   letters: []
@@ -204,6 +207,9 @@ export async function POST(request: NextRequest) {
   const table = tableBySection[section];
   const rawId = typeof body.id === "string" && body.id ? body.id : null;
   const isRealUuid = isValidUuid(rawId);
+  if (section === "packages" && !isRealUuid) {
+    return NextResponse.json({ ok: false, message: "Paket membership adalah dua data tetap dan hanya dapat diperbarui, bukan ditambah." }, { status: 400 });
+  }
   const normalized = normalizePayload(section, body.payload as Record<string, unknown>, isRealUuid);
   const cleanPayload = filterPayload(section, normalized);
 
@@ -215,6 +221,28 @@ export async function POST(request: NextRequest) {
 
   if (supabase) {
     try {
+      if (section === "packages" && rawId) {
+        const { data: existingPackage, error: packageError } = await supabase
+          .from("consultation_packages")
+          .select("*")
+          .eq("id", rawId)
+          .maybeSingle();
+
+        if (packageError || !existingPackage || existingPackage.category !== "membership" || !membershipPackageCodes.has(existingPackage.code)) {
+          return NextResponse.json({ ok: false, message: "Hanya Member Free dan Member Premium yang dapat dikelola pada MVP persuratan." }, { status: 404 });
+        }
+      }
+
+      if (section === "packages" && ("letter_quota" in cleanPayload || "screening_quota" in cleanPayload)) {
+        const { error: schemaError } = await supabase.from("consultation_packages").select("membership_tier, screening_quota").limit(0);
+        if (schemaError) {
+          if (["42703", "PGRST204"].includes(schemaError.code)) {
+            return NextResponse.json({ ok: false, message: "Pengaturan kuota belum aktif. Pembaruan database membership perlu diterapkan terlebih dahulu. Muat ulang halaman untuk menyunting harga dan tampilan paket." }, { status: 409 });
+          }
+          return NextResponse.json({ ok: false, message: "Gagal memeriksa kesiapan pengaturan kuota. Coba lagi nanti." }, { status: 500 });
+        }
+      }
+
       let targetId: string | null = isRealUuid ? rawId : null;
 
       // If ID is not a real UUID (e.g. from seeded fallback items), check if row already exists by unique key (slug / name)
@@ -270,7 +298,7 @@ export async function DELETE(request: NextRequest) {
   const rawId = request.nextUrl.searchParams.get("id");
   if (!section || !rawId) return NextResponse.json({ ok: false, message: "Parameter tidak valid." }, { status: 400 });
 
-  if (section === "orders" || section === "letters") return NextResponse.json({ ok: false, message: "Data tidak dapat dihapus melalui CMS." }, { status: 400 });
+  if (section === "orders" || section === "letters" || section === "packages") return NextResponse.json({ ok: false, message: "Data tidak dapat dihapus melalui CMS." }, { status: 400 });
 
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();

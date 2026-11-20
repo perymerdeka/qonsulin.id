@@ -12,6 +12,8 @@ export type ConsultationPackage = {
   original_price?: number | null;
   duration_days?: number | null;
   letter_quota?: number | null;
+  screening_quota?: number | null;
+  membership_tier?: "free" | "premium" | null;
   description?: string | null;
   badge?: string | null;
   features: string[];
@@ -47,6 +49,8 @@ export const fallbackPackages: ConsultationPackage[] = [
     original_price: 0,
     duration_days: null,
     letter_quota: 3,
+    screening_quota: 1,
+    membership_tier: "free",
     description: "Akses dasar menulis surat batin dan membaca cerita anonim di kolam komunitas.",
     badge: "Gratis",
     features: [
@@ -68,6 +72,8 @@ export const fallbackPackages: ConsultationPackage[] = [
     original_price: 39000,
     duration_days: 30,
     letter_quota: -1,
+    screening_quota: 1,
+    membership_tier: "premium",
     description: "Ruang katarsis tanpa batas dengan seluruh tema kertas dan cap segel lilin eksklusif.",
     badge: "Pilihan Populer",
     features: [
@@ -79,48 +85,6 @@ export const fallbackPackages: ConsultationPackage[] = [
     ],
     is_active: true,
     sort_order: 2
-  },
-  {
-    id: "pkg-sebaya",
-    code: "konseling_sebaya",
-    name: "Konseling Teman Dengar (Sebaya)",
-    category: "consultation",
-    price: 35000,
-    original_price: 50000,
-    duration_days: null,
-    letter_quota: null,
-    description: "Sesi 1-on-1 privat 45-60 menit bersama konselor sebaya terlatih untuk luapan emosi & overthinking.",
-    badge: "Terjangkau",
-    features: [
-      "Sesi 1-on-1 via Chat WhatsApp / Call 45-60 menit",
-      "Didampingi Peer Counselor terlatih",
-      "Ruang aman tanpa stigma & tanpa menghakimi",
-      "Cocok untuk burnout, bad day, & curhat terarah",
-      "Rangkuman refleksi setelah sesi"
-    ],
-    is_active: true,
-    sort_order: 3
-  },
-  {
-    id: "pkg-klinis",
-    code: "psikolog_klinis",
-    name: "Konseling Psikolog Klinis",
-    category: "consultation",
-    price: 129000,
-    original_price: 175000,
-    duration_days: null,
-    letter_quota: null,
-    description: "Pendampingan profesional berwenang untuk eksplorasi trauma, kecemasan akut, dan intervensi klinis mendalam.",
-    badge: "Profesional Berwenang",
-    features: [
-      "Sesi privat 60 menit bersama Psikolog S.Psi., M.Psi.",
-      "Intervensi psikologis terarah & mendalam",
-      "Asesmen klinis & pemetaan akar masalah",
-      "Pendampingan etis & terikat kode etik HIMPSI",
-      "Bukan diagnosa sembarangan"
-    ],
-    is_active: true,
-    sort_order: 4
   }
 ];
 
@@ -142,6 +106,7 @@ export async function getMemberOrders(): Promise<PackageOrder[]> {
     const { data, error } = await supabase
       .from("package_orders")
       .select("*")
+      .in("package_code", ["member_free", "member_premium"])
       .order("created_at", { ascending: false })
       .limit(5);
     return error || !data ? [] : data as PackageOrder[];
@@ -158,9 +123,11 @@ export async function getActivePackages(): Promise<ConsultationPackage[]> {
       .from("consultation_packages")
       .select("*")
       .eq("is_active", true)
+      .eq("category", "membership")
+      .in("code", ["member_free", "member_premium"])
       .order("sort_order", { ascending: true });
 
-    if (error || !data || data.length === 0) return fallbackPackages;
+    if (error || !data) return fallbackPackages;
     return data.map((item: any) => ({
       ...item,
       features: Array.isArray(item.features)
@@ -190,7 +157,7 @@ export function generateWhatsAppOrderUrl(
     `Halo Admin QONSULIN.ID, saya ingin memesan paket berikut:`,
     ``,
     `*Nama Paket:* ${pkg.name}`,
-    `*Kategori:* ${pkg.category === "membership" ? "Membership Surat Batin" : "Konsultasi 1-on-1"}`,
+    "*Kategori:* Membership Persuratan",
     `*Tarif:* ${priceFormatted}`,
     `*Pemesan:* ${userIdentifier}`,
     ...(member?.orderId ? [`*ID Pesanan:* #${member.orderId.slice(0, 8)}`] : []),
