@@ -213,6 +213,18 @@ export async function POST(request: NextRequest) {
   const normalized = normalizePayload(section, body.payload as Record<string, unknown>, isRealUuid);
   const cleanPayload = filterPayload(section, normalized);
 
+  if (section === "packages") {
+    for (const field of ["price", "letter_quota", "screening_quota"] as const) {
+      const value = cleanPayload[field];
+      if (!Number.isInteger(value) || Number(value) < (field === "price" ? 0 : -1)) {
+        return NextResponse.json({ ok: false, message: field === "price" ? "Tarif paket harus berupa angka bulat nol atau lebih." : "Kuota surat harus berupa angka bulat minimal -1." }, { status: 400 });
+      }
+    }
+    if (cleanPayload.duration_days !== null && cleanPayload.duration_days !== undefined && (!Number.isInteger(cleanPayload.duration_days) || Number(cleanPayload.duration_days) < 1)) {
+      return NextResponse.json({ ok: false, message: "Masa aktif paket harus minimal 1 hari, atau dikosongkan untuk Member Free." }, { status: 400 });
+    }
+  }
+
   const adminClient = getSupabaseAdminClient();
   const publicClient = getSupabasePublicClient();
   const supabase = (adminClient || publicClient) as any;

@@ -66,18 +66,17 @@ export async function PATCH(request: NextRequest) {
     if (!body.handling_status || !handlingStatuses.includes(body.handling_status as typeof handlingStatuses[number])) {
       return NextResponse.json({ ok: false, message: "Status penanganan tidak valid." }, { status: 400 });
     }
-    const response = body.operator_response?.trim() || null;
-    if (response && (response.length < 10 || response.length > 3000)) {
-      return NextResponse.json({ ok: false, message: "Balasan member harus 10-3000 karakter." }, { status: 400 });
+    if (body.operator_response) {
+      return NextResponse.json({ ok: false, message: "Balasan surat khusus belum tersedia." }, { status: 400 });
     }
     const { data, error } = await supabase.rpc("admin_handle_special_letter", {
       p_thread_id: body.id,
       p_status: body.handling_status,
       p_companion_id: body.assigned_companion_id || null,
-      p_response: response
+      p_response: null
     });
     if (error || !data?.ok) return NextResponse.json({ ok: false, message: error?.message || data?.message || "Penanganan surat belum tersimpan." }, { status: 400 });
-    return NextResponse.json({ ok: true, message: response ? "Penanganan dan balasan surat privat diperbarui." : "Penanganan surat privat diperbarui." });
+    return NextResponse.json({ ok: true, message: "Penanganan surat khusus diperbarui." });
   }
 
   if (body.type === "report") {

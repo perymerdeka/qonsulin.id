@@ -89,7 +89,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
             <ArrowLeft size={16} /> {thread.delivery_mode === "special" ? "Kembali ke Ruang Member" : "Kembali ke Kolam Surat"}
           </Link>
           <span className="pill muted" style={{ fontSize: "0.78rem" }}>
-            {thread.delivery_mode === "special" ? "Permintaan Dukungan Awal" : "Topik: " + thread.topic}
+            {thread.delivery_mode === "special" ? "Surat Khusus" : "Topik: " + thread.topic}
           </span>
           {thread.status !== "open" && (
             <span
@@ -130,7 +130,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
         <div style={{ maxWidth: 640, margin: "2.5rem auto 0" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", borderBottom: "1px solid var(--color-rule)", paddingBottom: "0.75rem" }}>
             <h3 style={{ fontSize: "1.15rem", color: "var(--color-ink)", margin: 0, display: "flex", gap: "0.4rem", alignItems: "center" }}>
-              <HeartHandshake size={18} style={{ color: "var(--color-brand)" }} /> {thread.delivery_mode === "special" ? "Balasan Tim Qonsulin" : "Balasan Kawan Cerita"} ({thread.replies.length})
+              <HeartHandshake size={18} style={{ color: "var(--color-brand)" }} /> {thread.delivery_mode === "special" ? "Status Surat Khusus" : "Balasan Kawan Cerita"} ({thread.replies.length})
             </h3>
             {thread.status === "open" && thread.delivery_mode === "public" && !isAuthor && (
               <Link href={`/surat/${thread.id}/balas`} className="btn btn-primary" style={{ fontSize: "0.82rem", minHeight: 34, padding: "0.3rem 0.9rem" }}>
@@ -153,7 +153,7 @@ export default function ThreadDetailPage({ params }: { params: Promise<{ id: str
             <div className="card" style={{ textAlign: "center", padding: "2rem 1rem", background: "var(--color-surface-muted)" }}>
               <p style={{ color: "var(--color-muted)", fontSize: "0.88rem", marginBottom: isAuthor ? 0 : "1rem" }}>
                 {thread.delivery_mode === "special"
-                  ? "Belum ada balasan. Admin sedang meninjau dan meneruskan surat privatmu."
+                  ? "Surat khususmu telah diterima. Tim Qonsulin sedang meninjau dan mengarahkan surat sesuai tujuan yang kamu pilih. Balasan melalui platform belum tersedia."
                   : isAuthor
                     ? "Belum ada balasan. Suratmu sedang menunggu kawan cerita yang tergerak membalas."
                     : "Belum ada balasan untuk surat ini. Berikan kata-kata penguat pertama untuknya."}

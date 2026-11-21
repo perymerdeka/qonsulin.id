@@ -49,6 +49,11 @@ export type LetterQuota = {
   limit: number;
   remaining: number;
   can_send: boolean;
+  special_letter_used: number;
+  special_letter_limit: number;
+  special_letter_remaining: number;
+  can_send_special_letter: boolean;
+  has_open_special_letter: boolean;
   screening_used?: number;
   screening_limit?: number;
   screening_remaining?: number;
@@ -111,20 +116,26 @@ export async function getActiveTemplates(): Promise<LetterTemplate[]> {
   }
 }
 
-export async function getMemberQuota(): Promise<LetterQuota> {
-  const fallback: LetterQuota = { tier: "free", used: 0, limit: 3, remaining: 3, can_send: true };
+export async function getMemberQuota(): Promise<LetterQuota | null> {
   try {
     const supabase = getSupabaseClient() as any;
-    if (!supabase) return fallback;
+    if (!supabase) return null;
     const { data: sessionData } = await supabase.auth.getSession();
     const user = sessionData?.session?.user;
-    if (!user) return fallback;
+    if (!user) return null;
 
     const { data, error } = await supabase.rpc("get_member_letter_quota", { p_user_id: user.id });
-    if (error || !data) return fallback;
-    return data as LetterQuota;
+    if (error || !data) return null;
+    return {
+      ...data,
+      special_letter_used: data.special_letter_used ?? data.screening_used ?? 0,
+      special_letter_limit: data.special_letter_limit ?? data.screening_limit ?? 0,
+      special_letter_remaining: data.special_letter_remaining ?? data.screening_remaining ?? 0,
+      can_send_special_letter: data.can_send_special_letter ?? data.can_request_screening ?? false,
+      has_open_special_letter: data.has_open_special_letter ?? data.has_open_screening ?? false
+    } as LetterQuota;
   } catch {
-    return fallback;
+    return null;
   }
 }
 

@@ -72,7 +72,7 @@ export const fallbackPackages: ConsultationPackage[] = [
     original_price: 39000,
     duration_days: 30,
     letter_quota: -1,
-    screening_quota: 1,
+    screening_quota: 3,
     membership_tier: "premium",
     description: "Ruang katarsis tanpa batas dengan seluruh tema kertas dan cap segel lilin eksklusif.",
     badge: "Pilihan Populer",
@@ -95,6 +95,29 @@ export function formatRupiah(amount: number): string {
     currency: "IDR",
     minimumFractionDigits: 0
   }).format(amount);
+}
+
+function quotaBenefit(limit: number, subject: string) {
+  if (limit === -1) return subject + " tanpa batas";
+  if (limit === 0) return "Belum termasuk " + subject.toLowerCase();
+  return limit + " " + subject.toLowerCase() + " per bulan";
+}
+
+function isLegacyQuotaBenefit(feature: string) {
+  return /(surat\s+(batin|publik|khusus).*(bulan|kuota|tanpa batas)|tanpa batas.*surat)/i.test(feature);
+}
+
+// Quota benefits are derived from the enforced package fields, not editable prose.
+export function getMembershipBenefits(pkg: ConsultationPackage): string[] {
+  const publicQuota = pkg.letter_quota ?? (pkg.membership_tier === "premium" ? -1 : 3);
+  const specialQuota = pkg.screening_quota ?? 1;
+  const additionalBenefits = (pkg.features || []).filter((feature) => !isLegacyQuotaBenefit(feature));
+
+  return [
+    quotaBenefit(publicQuota, "Surat publik"),
+    quotaBenefit(specialQuota, "Surat khusus"),
+    ...additionalBenefits
+  ];
 }
 
 export async function getMemberOrders(): Promise<PackageOrder[]> {

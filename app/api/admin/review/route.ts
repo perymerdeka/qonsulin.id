@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     if (letterError) return NextResponse.json({ ok: false, message: letterError.message }, { status: 400 });
     if (!letter || (Array.isArray(letter.letter_threads) ? letter.letter_threads[0] : letter.letter_threads)?.delivery_mode !== "public") {
-      return NextResponse.json({ ok: false, message: "Surat privat ditangani melalui Inbox Penanganan, bukan Moderasi Surat." }, { status: 409 });
+      return NextResponse.json({ ok: false, message: "Surat khusus ditangani melalui Inbox Surat Khusus, bukan Moderasi Surat." }, { status: 409 });
     }
 
     const statusByAction: Record<string, string> = { approve: "approved", reject: "rejected" };

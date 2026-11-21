@@ -22,8 +22,8 @@ const scopeCopy: Record<Scope, {
   inbox: {
     title: "Surat Masuk",
     short: "Balasan yang kamu terima",
-    what: "Balasan komunitas atau Tim Qonsulin pada surat yang kamu tulis.",
-    how: "Balasan komunitas muncul setelah moderasi. Balasan surat privat hanya dikirim oleh admin Qonsulin.",
+    what: "Balasan komunitas untuk surat publik yang kamu tulis.",
+    how: "Balasan hanya tersedia untuk surat publik. Surat khusus saat ini ditinjau dan ditangani oleh tim Qonsulin.",
     emptyTitle: "Belum ada balasan masuk",
     emptyBody: "Kalau suratmu sudah disetujui dan ada kawan yang membalas, balasannya akan tampil di sini.",
     itemLabel: "Balasan masuk"
@@ -31,10 +31,10 @@ const scopeCopy: Record<Scope, {
   outbox: {
     title: "Surat Keluar",
     short: "Surat yang kamu kirim",
-    what: "Surat publik dan surat privat yang kamu kirim.",
-    how: "Surat publik memakai status moderasi. Surat tujuan khusus memakai status penanganan admin dan tidak tampil di Kolam Surat.",
+    what: "Surat publik dan surat khusus yang kamu kirim.",
+    how: "Surat publik memakai status moderasi. Surat khusus memakai status penanganan tim dan tidak tampil di Kolam Surat.",
     emptyTitle: "Belum ada surat terkirim",
-    emptyBody: "Surat publik maupun surat privat yang kamu tulis akan tercatat di sini.",
+    emptyBody: "Surat publik maupun surat khusus yang kamu tulis akan tercatat di sini.",
     itemLabel: "Surat terkirim"
   }
 };
@@ -55,7 +55,7 @@ function threadBadge(status: MemberThreadSummary["status"]) {
 }
 
 function specialHandlingBadge(status: MemberThreadSummary["handling_status"]) {
-  const labels = { waiting: "Menunggu Disposisi", assigned: "Sudah Ditugaskan", in_progress: "Sedang Diproses", completed: "Selesai", needs_attention: "Perlu Perhatian" } as const;
+  const labels = { waiting: "Surat Diterima", assigned: "Tujuan Ditetapkan", in_progress: "Sedang Ditinjau", completed: "Selesai", needs_attention: "Perlu Perhatian" } as const;
   const tones = { waiting: ["#fef3c7", "#92400e"], assigned: ["#dbeafe", "#1d4ed8"], in_progress: ["#e0e7ff", "#3730a3"], completed: ["#dcfce7", "#166534"], needs_attention: ["#ffedd5", "#9a3412"] } as const;
   const current = status || "waiting";
   return { label: labels[current], bg: tones[current][0], color: tones[current][1] };
@@ -215,7 +215,7 @@ export function MemberLetterBox({ scope }: { scope: Scope }) {
                     <div style={{ minWidth: 220, flex: 1 }}>
                       <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap", marginBottom: "0.5rem" }}>
                         <span className="pill" style={{ fontSize: "0.72rem", background: "#e0e7ff", color: "#3730a3" }}>
-                          {thread.delivery_mode === "special" ? (scope === "inbox" ? "Balasan surat privat" : "Surat privat") : copy.itemLabel}
+                          {thread.delivery_mode === "special" ? (scope === "inbox" ? "Balasan surat khusus" : "Surat khusus") : copy.itemLabel}
                         </span>
                         <span className="pill muted" style={{ fontSize: "0.72rem" }}>{thread.topic}</span>
                         {mod && (

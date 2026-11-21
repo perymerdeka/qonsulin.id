@@ -75,7 +75,7 @@ const sections: Array<{ id: Section; label: string; icon: React.ComponentType<{ 
   { id: "members", label: "Kelola Member", icon: UserCheck },
   { id: "orders", label: "Pesanan Paket", icon: CreditCard },
   { id: "letters", label: "Moderasi Surat", icon: ShieldCheck },
-  { id: "operations", label: "Operasi & Dukungan", icon: MessageCircle },
+  { id: "operations", label: "Surat Khusus", icon: MessageCircle },
   { id: "settings", label: "Status & Sinkronisasi", icon: SettingsIcon }
 ];
 
@@ -378,7 +378,7 @@ function MembershipPolicyPanel({ packages, onEdit }: { packages: ConsultationPac
   return (
     <section className="membership-policy-panel" aria-labelledby="membership-policy-title">
       <div className="membership-policy-heading">
-        <div><p className="admin-eyebrow">MEMBERSHIP PERSURATAN</p><h2 id="membership-policy-title">Dua paket akun untuk fitur surat</h2><p>Member Free dan Member Premium menentukan akses persuratan, kuota surat publik, serta screening awal ke konselor.</p></div>
+        <div><p className="admin-eyebrow">MEMBERSHIP PERSURATAN</p><h2 id="membership-policy-title">Dua paket akun untuk fitur surat</h2><p>Member Free dan Member Premium menentukan akses persuratan, kuota surat publik, serta surat khusus ke Mentor atau Konselor.</p></div>
       </div>
       {missingPolicyFields && <p className="membership-policy-warning" role="status">Data pengaturan kuota baru belum tersedia. Pembaruan database perlu diselesaikan sebelum kuota baru dapat disimpan dan digunakan.</p>}
       <div className="package-policy-group"><div className="package-policy-group-heading"><h3>Paket yang tersedia</h3><p>Hanya Member Free dan Member Premium. Tidak ada produk konsultasi pada MVP ini.</p></div><div className="membership-policy-grid">{tiers.map((tier) => {
@@ -390,8 +390,8 @@ function MembershipPolicyPanel({ packages, onEdit }: { packages: ConsultationPac
           <h3>{item?.name || `Member ${tier === "premium" ? "Premium" : "Free"}`}</h3>
           <strong>{item ? formatRupiah(item.price) : "Belum dikonfigurasi"}{item?.duration_days ? <small> / {item.duration_days} hari</small> : null}</strong>
           <p>{quotaLabel(letterQuota, "surat publik")}</p>
-          <p>{quotaLabel(screeningQuota, "permintaan screening awal")}</p>
-          <small>{tier === "free" ? "Saat sistem dinamis aktif, perubahan kuota berlaku awal bulan WIB berikutnya." : "Saat sistem dinamis aktif, kuota dan durasi dicatat ketika pesanan dibuat."}</small>
+          <p>{quotaLabel(screeningQuota, "surat khusus")}</p>
+          <small>Perubahan kuota langsung berlaku untuk member {tier === "premium" ? "Premium aktif" : "Free"}; harga dan durasi pesanan Premium lama tetap tersimpan.</small>
           {onEdit && item && <button type="button" onClick={() => onEdit(item.id)}><PenLine size={14} /> Ubah Kebijakan</button>}
         </article>;
       })}</div></div>
@@ -456,7 +456,7 @@ function CmsForm({ section, row, loading, membershipPolicyAvailable, onCancel, o
     <>
       <div className="admin-title"><div><h1>{row ? config.editTitle : config.newTitle}</h1><p>{config.help}</p></div><button className="admin-badge" onClick={onCancel}>Kembali & Batal</button></div>
       <form className="form-layout" onSubmit={submit}>
-        {isPackageForm && <div className="package-form-notice is-membership"><strong>Paket akun: mengatur hak pengguna.</strong><p>{membershipPolicyAvailable ? "Ubah harga, kuota surat publik, dan batas screening awal." : "Harga, masa aktif, dan tampilan paket dapat diubah. Pengaturan kuota belum aktif dan menunggu pembaruan database."} Nama serta tier Free/Premium dikunci agar selalu hanya ada dua paket membership.</p></div>}
+        {isPackageForm && <div className="package-form-notice is-membership"><strong>Paket akun: mengatur hak pengguna.</strong><p>{membershipPolicyAvailable ? "Ubah harga, kuota surat publik, dan batas surat khusus. Perubahan kuota langsung berlaku untuk member pada tier terkait." : "Harga, masa aktif, dan tampilan paket dapat diubah. Pengaturan kuota belum aktif dan menunggu pembaruan database."} Nama serta tier Free/Premium dikunci agar selalu hanya ada dua paket membership.</p></div>}
         <div className="form-grid">
           {visibleFields.map((field) => <Field key={field.name} label={field.label} wide={field.wide}>{renderInput(field, form[field.name], (value) => setForm((current) => ({ ...current, [field.name]: value })))}</Field>)}
         </div>
@@ -630,8 +630,8 @@ function formConfig(section: Exclude<Section, "dashboard" | "settings" | "orders
         { name: "price", label: "Tarif Resmi (Rp) *", type: "number", required: true },
         { name: "original_price", label: "Harga Coret Promo (Rp opsional)", type: "number" },
         { name: "badge", label: "Label Badge (misal: Pilihan Populer, Terjangkau)" },
-        { name: "letter_quota", label: "Batas Surat Publik per Bulan (-1 = tanpa batas)", type: "number" },
-        { name: "screening_quota", label: "Batas Screening Awal ke Konselor per Bulan (-1 = tanpa batas)", type: "number" },
+        { name: "letter_quota", label: "Batas Surat Publik per Bulan (-1 = tanpa batas)", type: "number", required: true },
+        { name: "screening_quota", label: "Batas Surat Khusus per Bulan (-1 = tanpa batas)", type: "number", required: true },
         { name: "duration_days", label: "Masa Aktif Paket (hari; kosongkan untuk Free)", type: "number" },
         { name: "sort_order", label: "Urutan Tampil", type: "number" },
         { name: "is_active", label: "Aktifkan Paket (Ditampilkan di Website)", type: "checkbox" },
@@ -669,7 +669,7 @@ function collectionConfig(section: Exclude<Section, "dashboard" | "settings" | "
       title: "Membership Surat",
       subtitle: "Dua paket tetap untuk MVP persuratan: Member Free dan Member Premium.",
       button: "Tambah Paket",
-      columns: ["Paket", "Tarif", "Kuota Surat", "Screening Awal", "Masa Aktif", "Status"],
+      columns: ["Paket", "Tarif", "Kuota Surat", "Surat Khusus", "Masa Aktif", "Status"],
       render: (row: AnyRow) => {
         const pkg = row as ConsultationPackage;
         return (
@@ -752,6 +752,7 @@ function formToPayload(section: Exclude<Section, "dashboard" | "settings" | "ord
   if ("original_price" in payload) payload.original_price = payload.original_price !== "" && payload.original_price !== null ? Number(payload.original_price) : null;
   if ("duration_days" in payload) payload.duration_days = payload.duration_days !== "" && payload.duration_days !== null ? Number(payload.duration_days) : null;
   if ("letter_quota" in payload) payload.letter_quota = payload.letter_quota !== "" && payload.letter_quota !== null ? Number(payload.letter_quota) : null;
+  if ("screening_quota" in payload) payload.screening_quota = payload.screening_quota !== "" && payload.screening_quota !== null ? Number(payload.screening_quota) : null;
   if ((section === "posts" || section === "galleries" || section === "streaming") && !payload.slug && payload.title) payload.slug = slugify(String(payload.title));
   return payload;
 }

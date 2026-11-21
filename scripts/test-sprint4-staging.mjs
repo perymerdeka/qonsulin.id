@@ -37,30 +37,21 @@ async function createMember() {
   return { userId: data.user.id, client: createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: "Bearer " + session.session.access_token } } }) };
 }
 
-async function activatePackage(userId, code) {
-  const { data: pkg, error: packageError } = await admin.from("consultation_packages").select("id, code, name, price").eq("code", code).maybeSingle();
-  assert.ifError(packageError);
-  assert.ok(pkg, "Paket uji " + code + " tidak ditemukan.");
-  const { error } = await admin.from("package_orders").insert({ user_id: userId, package_id: pkg.id, package_code: pkg.code, package_name: pkg.name, amount: pkg.price, status: "active", activated_at: new Date().toISOString() });
-  assert.ifError(error);
-}
-
 async function run() {
   console.log("== E2E Sprint 4 (staging) ==");
   const member = await createMember();
 
   const { data: denied, error: deniedError } = await member.client.rpc("send_special_letter", {
-    p_destination: "mentor", p_title: null, p_content: "Surat uji tanpa paket aktif harus ditolak.", p_template_code: "vintage_parchment"
+    p_destination: "screening", p_title: null, p_content: "Tujuan surat uji yang tidak valid harus ditolak.", p_template_code: "vintage_parchment"
   });
   assert.ifError(deniedError);
-  assert.equal(denied.ok, false, "Surat khusus tanpa paket aktif harus ditolak");
+  assert.equal(denied.ok, false, "Tujuan surat khusus yang tidak valid harus ditolak");
 
-  await activatePackage(member.userId, "konseling_sebaya");
   const { data: created, error: createError } = await member.client.rpc("send_special_letter", {
-    p_destination: "mentor", p_title: "Surat privat E2E", p_content: "Ini surat privat Sprint 4 untuk menguji alur admin dan tidak boleh masuk ke kolam publik.", p_template_code: "vintage_parchment"
+    p_destination: "mentor", p_title: null, p_content: "Ini surat khusus Sprint 4 untuk Mentor dan tidak boleh masuk ke Kolam Surat.", p_template_code: "vintage_parchment"
   });
   assert.ifError(createError);
-  assert.equal(created.ok, true, "Pengiriman surat privat harus berhasil");
+  assert.equal(created.ok, true, "Pengiriman surat khusus harus berhasil");
 
   const { data: thread, error: threadError } = await admin.from("letter_threads")
     .select("id, delivery_mode, special_destination, handling_status")
@@ -71,23 +62,15 @@ async function run() {
   const { data: anonymousPool, error: poolError } = await createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
     .from("letters").select("thread_id").eq("thread_id", created.thread_id);
   assert.ifError(poolError);
-  assert.equal(anonymousPool.length, 0, "Surat privat tidak boleh terbaca melalui kolam publik");
+  assert.equal(anonymousPool.length, 0, "Surat khusus tidak boleh terbaca melalui Kolam Surat");
 
-  const replyText = "Balasan uji dari Tim Qonsulin. Kami sudah menerima dan meneruskan suratmu.";
-  const { data: handled, error: replyError } = await admin.rpc("admin_handle_special_letter", {
-    p_thread_id: created.thread_id, p_status: "completed", p_companion_id: null, p_response: replyText
+  const { data: handled, error: handlingError } = await admin.rpc("admin_handle_special_letter", {
+    p_thread_id: created.thread_id, p_status: "completed", p_companion_id: null, p_response: null
   });
-  assert.ifError(replyError);
-  assert.equal(handled.ok, true, "Admin harus dapat menyimpan balasan operator");
-
-  const { data: memberReply, error: memberReplyError } = await member.client.from("letters")
-    .select("content, operator_reply").eq("thread_id", created.thread_id).eq("operator_reply", true).maybeSingle();
-  assert.ifError(memberReplyError);
-  assert.equal(memberReply.content, replyText);
-  assert.equal(memberReply.operator_reply, true);
-  console.log("PASS Surat privat, hak paket, isolasi kolam publik, dan balasan operator.");
+  assert.ifError(handlingError);
+  assert.equal(handled.ok, true, "Admin harus dapat memperbarui status surat khusus");
+  console.log("PASS Surat khusus Mentor, isolasi Kolam Surat, dan disposisi admin.");
 }
-
 async function cleanup() {
   for (const userId of createdUserIds) {
     await admin.from("package_orders").delete().eq("user_id", userId);

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertCircle, AlertTriangle, Ban, CheckCircle2, Ellipsis, Flag, Globe2, Heart, Loader2, Mail, MessageCircle, PenLine, Send, ShieldCheck, X, XCircle } from "lucide-react";
 import { blockLetterThread, closeLetterThread, defaultTemplates, getActiveTemplates, getMemberLetterThreads, getPoolLetters, getThreadDetail, reportCategoryLabels, reportLetterThread, type LetterItem, type LetterQuota, type LetterTemplate, type LetterThreadDetail, type MemberThreadSummary, type ReportCategory } from "@/lib/letters";
 import { getSupabaseClient } from "@/lib/supabase";
+import { getMemberQuota } from "@/lib/letters";
 import type { PackageOrder } from "@/lib/packages";
 import type { MemberNotification } from "@/components/MemberAppShell";
 import { CrisisGuidance } from "@/components/CrisisGuidance";
@@ -415,11 +416,11 @@ export function createNotifications(outbox: MemberThreadSummary[], inbox: Member
   const moderationNotifications = outbox.map((letter) => {
     if (letter.delivery_mode === "special") {
       const messages = {
-        waiting: ["Surat privatmu sudah diterima", "Admin akan meninjau dan meneruskan surat kepada pendamping yang sesuai."],
-        assigned: ["Surat privatmu sudah ditugaskan", "Admin sudah meneruskan surat kepada pendamping."],
-        in_progress: ["Surat privatmu sedang diproses", "Pendampingan sedang ditangani oleh tim Qonsulin."],
-        completed: ["Penanganan suratmu selesai", "Periksa Inbox untuk melihat balasan dari Tim Qonsulin."],
-        needs_attention: ["Suratmu sedang ditinjau khusus", "Tim Qonsulin memberi perhatian tambahan pada surat privatmu."]
+        waiting: ["Surat khususmu sudah diterima", "Tim Qonsulin akan meninjau surat sebelum mengarahkannya ke tujuan yang dipilih."],
+        assigned: ["Tujuan surat khususmu telah ditetapkan", "Tim Qonsulin telah menetapkan profil tujuan untuk suratmu."],
+        in_progress: ["Surat khususmu sedang ditinjau", "Tim Qonsulin sedang meninjau surat khususmu."],
+        completed: ["Penanganan surat khususmu selesai", "Balasan melalui platform belum tersedia."],
+        needs_attention: ["Suratmu sedang ditinjau khusus", "Tim Qonsulin memberi perhatian tambahan pada surat khususmu."]
       } as const;
       const status = letter.handling_status || "waiting";
       const message = messages[status];
@@ -449,6 +450,7 @@ export function MemberDashboard({ alias, avatarConfig, memberId, tier, quota, or
   const [mobileView, setMobileView] = useState<"public" | "yours">("public");
   const [selectedTemplate, setSelectedTemplate] = useState("vintage_parchment");
   const [deliveryMode, setDeliveryMode] = useState<"public" | "special">("public");
+  const [specialDestination, setSpecialDestination] = useState<"mentor" | "counselor">("mentor");
   const [templates, setTemplates] = useState<LetterTemplate[]>(defaultTemplates);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -523,11 +525,6 @@ export function MemberDashboard({ alias, avatarConfig, memberId, tier, quota, or
       setFeedback("Isi surat minimal 10 karakter.");
       return;
     }
-    if (deliveryMode === "public" && quota && !quota.can_send) {
-      setFeedback("Kuota surat pembuka bulan ini sudah habis.");
-      return;
-    }
-
     const supabase = getSupabaseClient() as any;
     if (!supabase) {
       setFeedback("Koneksi database tidak tersedia.");
@@ -536,15 +533,28 @@ export function MemberDashboard({ alias, avatarConfig, memberId, tier, quota, or
 
     setSending(true);
     try {
+      const currentQuota = await getMemberQuota();
+      if (!currentQuota) {
+        setFeedback("Kuota membership belum dapat dimuat. Coba lagi sebelum mengirim surat.");
+        return;
+      }
+      if (deliveryMode === "public" && !currentQuota.can_send) {
+        setFeedback("Kuota surat publik bulan ini sudah habis.");
+        return;
+      }
+      if (deliveryMode === "special" && !currentQuota.can_send_special_letter) {
+        setFeedback(currentQuota.has_open_special_letter ? "Surat khususmu masih diproses. Tunggu penanganan surat sebelumnya selesai." : "Kuota surat khusus bulan ini sudah habis.");
+        return;
+      }
       const { data, error } = deliveryMode === "public"
         ? await supabase.rpc("send_opening_letter", { p_topic: "Luapan Hati", p_title: null, p_content: draft.trim(), p_template_code: selectedTemplate })
-        : await supabase.rpc("send_special_letter", { p_destination: "screening", p_title: null, p_content: draft.trim(), p_template_code: selectedTemplate });
+        : await supabase.rpc("send_special_letter", { p_destination: specialDestination, p_title: null, p_content: draft.trim(), p_template_code: selectedTemplate });
       if (error || !data?.ok) {
         setFeedback(data?.message || error?.message || "Surat belum berhasil dikirim.");
         return;
       }
       setDraft("");
-      setFeedback(data.is_crisis_hold ? "Surat tersimpan dan sedang ditinjau dengan perhatian khusus." : deliveryMode === "special" ? "Permintaan dukungan awalmu sudah masuk ke tim Qonsulin." : "Surat terkirim dan menunggu moderasi sebelum tampil di Kolam Surat.");
+      setFeedback(data.is_crisis_hold ? "Surat tersimpan dan sedang ditinjau dengan perhatian khusus." : deliveryMode === "special" ? "Surat khususmu telah diterima oleh tim Qonsulin." : "Surat terkirim dan menunggu moderasi sebelum tampil di Kolam Surat.");
       setIsComposeOpen(false);
       setShowCrisisGuidance(Boolean(data.is_crisis_hold));
       await Promise.all([loadLists(), onLetterSent()]);
@@ -584,9 +594,13 @@ export function MemberDashboard({ alias, avatarConfig, memberId, tier, quota, or
         <section className="member-compose-card">
           <div className="member-send-mode" aria-label="Pilihan tujuan surat">
             <button type="button" className={deliveryMode === "public" ? "is-selected" : undefined} aria-pressed={deliveryMode === "public"} onClick={() => { setDeliveryMode("public"); setFeedback(""); }}><Globe2 size={18} /> Kirim Publik</button>
-            <button type="button" className={deliveryMode === "special" ? "is-selected" : undefined} aria-pressed={deliveryMode === "special"} onClick={() => { setDeliveryMode("special"); setFeedback(""); }}><Mail size={18} /> Minta Dukungan</button>
+            <button type="button" className={deliveryMode === "special" ? "is-selected" : undefined} aria-pressed={deliveryMode === "special"} onClick={() => { setDeliveryMode("special"); setFeedback(""); }}><Mail size={18} /> Kirim Khusus</button>
           </div>
-          {deliveryMode === "special" && <div className="member-support-note"><strong>Permintaan dukungan awal</strong><small>Gratis {quota?.screening_limit === -1 ? "tanpa batas" : `${quota?.screening_remaining ?? 0} dari ${quota?.screening_limit ?? 0}`} permintaan tersisa bulan ini. Tim Qonsulin akan meninjau suratmu; ini bukan sesi konsultasi atau layanan darurat.</small></div>}
+          {deliveryMode === "special" && <div className="member-support-note">
+            <label className="field"><span>Tujuan surat khusus</span><select value={specialDestination} onChange={(event) => setSpecialDestination(event.target.value as "mentor" | "counselor")}><option value="mentor">Kirim ke Mentor</option><option value="counselor">Kirim ke Konselor</option></select></label>
+            <small>Surat khusus akan ditinjau tim Qonsulin sebelum diarahkan ke tujuanmu. Tidak tampil di Kolam Surat. Balasan melalui platform belum tersedia.</small>
+            <small>{quota ? quota.special_letter_limit === -1 ? "Kuota surat khusus tanpa batas." : `Sisa ${quota.special_letter_remaining ?? 0} dari ${quota.special_letter_limit ?? 0} surat khusus bulan ini.` : "Memuat kuota surat khusus..."} Maksimal satu surat khusus aktif. Bukan layanan darurat.</small>
+          </div>}
           <div className="member-template-stage">
             {template.code === "vintage_parchment" ? <LetterAEnvelope /> : template.code === "warm_pastel" ? <LetterAEnvelope variant="golden" /> : template.code === "night_sky" ? <LetterAEnvelope variant="emerald" /> :
               <div className={`member-envelope-art is-preview envelope-${template.code}`} aria-label={`Preview template ${template.name}`}>
@@ -615,7 +629,7 @@ export function MemberDashboard({ alias, avatarConfig, memberId, tier, quota, or
           </div>
           <p className="member-selected-template">Tema surat: {template.name}</p>
           <button type="button" className="btn btn-primary member-write-button" onClick={() => { setFeedback(""); setIsComposeOpen(true); }}><PenLine size={18} /> Tulis Surat</button>
-          {effectiveTier !== "premium" && quota && <p className="member-compose-note">Sisa {quota.remaining} dari {quota.limit} surat pembuka bulan ini.</p>}
+          {deliveryMode === "public" && quota && <p className="member-compose-note">{quota.limit === -1 ? "Kuota surat publik tanpa batas." : `Sisa ${quota.remaining} dari ${quota.limit} surat publik bulan ini.`}</p>}
           {!isComposeOpen && feedback && <p className="member-compose-feedback" role="status">{feedback}</p>}
           <div className="member-letter-tabs" role="tablist" aria-label="Status surat saya">
             {tabs.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} className={activeTab === tab.id ? "is-active" : undefined} onClick={() => setActiveTab(tab.id)}>{tab.label}{typeof tab.count === "number" && tab.count > 0 ? <span>{tab.count}</span> : null}</button>)}
@@ -627,10 +641,10 @@ export function MemberDashboard({ alias, avatarConfig, memberId, tier, quota, or
                   <div className="member-review-envelope"><EnvelopePreview templateCode={letter.template_code} label={letter.topic} closed /></div>
                   <div className="member-review-content">
                     <p>{letter.moderation_status === "crisis_hold" ? "Surat Anda sedang ditinjau secara khusus. Mohon menunggu pembaruan dari tim Qonsulin." : "Untuk menghindari adanya pelanggaran, surat Anda kami tinjau sebelum dipublikasikan ke ruang publik. Mohon menunggu!"}</p>
-                    <span className="member-review-note"><AlertCircle size={18} aria-hidden="true" /> {letter.delivery_mode === "special" ? "Setelah ditinjau, surat privat Anda akan diteruskan ke tujuan yang dipilih." : "Setelah ditinjau surat Anda akan langsung tampil di Public Letter."}</span>
+                    <span className="member-review-note"><AlertCircle size={18} aria-hidden="true" /> {letter.delivery_mode === "special" ? "Tim Qonsulin akan meninjau dan mengarahkan surat khusus Anda sesuai tujuan yang dipilih." : "Setelah ditinjau surat Anda akan langsung tampil di Public Letter."}</span>
                   </div>
                 </article>
-              )) : visibleLetters.map((letter, index) => <button type="button" key={`${letter.id}-${letter.created_at}-${index}`} className="member-own-letter" onClick={() => setSelectedThreadId(letter.id)}><div className="member-letter-meta"><MemberAvatar config={activeTab === "inbox" ? letter.author_avatar : avatarConfig} size={30} title={`Avatar ${activeTab === "inbox" ? letter.author_alias || "Kawan Cerita" : alias || "Teman Cerita"}`} /><strong>{activeTab === "inbox" ? letter.author_alias || "Kawan Cerita" : alias || "Teman Cerita"}</strong><time>{formatRelativeDate(letter.created_at)}</time><Ellipsis size={19} /></div><EnvelopePreview templateCode={letter.template_code} label={letter.topic} closed /><p className="member-letter-teaser">{letter.preview}</p><span className="member-letter-status">{letter.delivery_mode === "special" ? "Privat - " + ({ waiting: "Menunggu penugasan", assigned: "Sudah ditugaskan", in_progress: "Sedang diproses", completed: "Selesai", needs_attention: "Perlu perhatian khusus" }[letter.handling_status || "waiting"]) : letter.moderation_status === "pending" ? "Menunggu moderasi" : letter.moderation_status === "crisis_hold" ? "Ditahan untuk tinjauan" : letter.moderation_status === "rejected" ? "Ditolak" : "Disetujui"}</span></button>)}
+              )) : visibleLetters.map((letter, index) => <button type="button" key={`${letter.id}-${letter.created_at}-${index}`} className="member-own-letter" onClick={() => setSelectedThreadId(letter.id)}><div className="member-letter-meta"><MemberAvatar config={activeTab === "inbox" ? letter.author_avatar : avatarConfig} size={30} title={`Avatar ${activeTab === "inbox" ? letter.author_alias || "Kawan Cerita" : alias || "Teman Cerita"}`} /><strong>{activeTab === "inbox" ? letter.author_alias || "Kawan Cerita" : alias || "Teman Cerita"}</strong><time>{formatRelativeDate(letter.created_at)}</time><Ellipsis size={19} /></div><EnvelopePreview templateCode={letter.template_code} label={letter.topic} closed /><p className="member-letter-teaser">{letter.preview}</p><span className="member-letter-status">{letter.delivery_mode === "special" ? "Khusus - " + ({ waiting: "Surat diterima", assigned: "Tujuan ditetapkan", in_progress: "Sedang ditinjau", completed: "Selesai", needs_attention: "Perlu perhatian khusus" }[letter.handling_status || "waiting"]) : letter.moderation_status === "pending" ? "Menunggu moderasi" : letter.moderation_status === "crisis_hold" ? "Ditahan untuk tinjauan" : letter.moderation_status === "rejected" ? "Ditolak" : "Disetujui"}</span></button>)}
             </div>
 
         </section>
@@ -641,15 +655,15 @@ export function MemberDashboard({ alias, avatarConfig, memberId, tier, quota, or
       <CrisisGuidance open={showCrisisGuidance} onClose={() => setShowCrisisGuidance(false)} />
       <dialog ref={composeDialogRef} className="member-compose-dialog" aria-labelledby="member-compose-title" onCancel={(event) => { event.preventDefault(); if (!sending) setIsComposeOpen(false); }}>
           <button type="button" className="member-thread-close" onClick={() => setIsComposeOpen(false)} disabled={sending} aria-label="Tutup form surat"><X size={19} /></button>
-          <p className="member-eyebrow">{deliveryMode === "public" ? "KIRIM PUBLIK" : "DUKUNGAN AWAL"}</p>
-          <h2 id="member-compose-title">Tulis suratmu</h2>
-          <p className="member-compose-dialog-copy">{deliveryMode === "public" ? "Surat akan ditinjau moderasi sebelum tampil di Kolam Surat." : "Ceritakan kebutuhanmu agar tim Qonsulin dapat mengarahkan dukungan yang sesuai. Ini bukan sesi konsultasi psikolog atau layanan darurat."}</p>
+          <p className="member-eyebrow">{deliveryMode === "public" ? "KIRIM PUBLIK" : "KIRIM KHUSUS"}</p>
+          <h2 id="member-compose-title">{deliveryMode === "public" ? "Tulis suratmu" : "Tulis Surat Khusus"}</h2>
+          <p className="member-compose-dialog-copy">{deliveryMode === "public" ? "Surat akan ditinjau moderasi sebelum tampil di Kolam Surat." : `Surat untuk ${specialDestination === "mentor" ? "mentor" : "konselor"} ditinjau tim Qonsulin sebelum diarahkan ke tujuanmu. Tidak tampil di Kolam Surat. Balasan melalui platform belum tersedia. Bukan layanan darurat.`}</p>
           <div className={`member-letter-editor paper-${template.code}`}>
             {(template.code === "vintage_parchment" || template.code === "warm_pastel" || template.code === "night_sky") ? <p className="member-letter-editor-salutation">Untukmu,</p> : <div className="member-letter-editor-heading"><span>Surat dari {alias || "Kawan Anonim"}</span><span>{template.name}</span></div>}
             <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Tulis suratmu di sini..." aria-label="Isi surat" maxLength={3000} disabled={sending} autoFocus />
             <p>Dari hati, {alias || "Kawan Anonim"}</p>
           </div>
-          <div className="member-compose-actions"><span>{draft.length}/3000</span><button type="button" className="btn btn-primary" disabled={sending} onClick={sendOpeningLetter}><Send size={17} /> {sending ? "Mengirim..." : deliveryMode === "public" ? "Kirim Publik" : "Kirim Permintaan"}</button></div>
+          <div className="member-compose-actions"><span>{draft.length}/3000</span><button type="button" className="btn btn-primary" disabled={sending} onClick={sendOpeningLetter}><Send size={17} /> {sending ? "Mengirim..." : deliveryMode === "public" ? "Kirim Publik" : "Kirim Surat Khusus"}</button></div>
           {feedback && <p className="member-compose-feedback" role="status">{feedback}</p>}
       </dialog>
     </div>

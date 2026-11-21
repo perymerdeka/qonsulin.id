@@ -3,7 +3,7 @@ import { AlertTriangle, ArrowRight, BookOpenText, CalendarDays, CheckCircle2, He
 import { Footer, Header } from "@/components/PublicChrome";
 import { faq, supportTiers, whatsappUrl } from "@/lib/data";
 import { getPublishedActivities, getPublishedGalleryEvents, getPublishedPosts, getPublishedStreamingVideos, plainExcerpt, type ActivityItem, type BlogPost, type GalleryEvent, type StreamingVideo } from "@/lib/cms";
-import { getActivePackages, formatRupiah, type ConsultationPackage } from "@/lib/packages";
+import { getActivePackages, getMembershipBenefits, formatRupiah, type ConsultationPackage } from "@/lib/packages";
 import { PackageOrderButton } from "@/components/PackageOrderButton";
 
 export const dynamic = "force-dynamic";
@@ -68,7 +68,7 @@ function getActivePath(slug: string) {
 function ServicesPage({ packages = [] }: { packages?: ConsultationPackage[] }) {
   const letterSteps = [
     ["Buat akun", "Daftar sebagai Member Free untuk mulai menggunakan ruang persuratan anonim."],
-    ["Tulis atau balas surat", "Kirim surat ke Kolam Surat atau pilih Permintaan Dukungan Awal bila memerlukan arahan tim."],
+    ["Tulis atau balas surat", "Kirim Publik ke Kolam Surat atau Kirim Khusus untuk Mentor/Konselor melalui tim Qonsulin."],
     ["Tunggu moderasi", "Surat publik ditinjau sebelum ditampilkan agar ruang komunitas tetap aman dan anonim."]
   ];
 
@@ -80,7 +80,7 @@ function ServicesPage({ packages = [] }: { packages?: ConsultationPackage[] }) {
           <div className="section-head center">
             <span className="tag">Membership Persuratan</span>
             <h2>Member Free & Member Premium</h2>
-            <p>Dua pilihan paket akun untuk fitur surat anonim. Screening awal adalah permintaan dukungan melalui surat, bukan sesi konsultasi psikolog.</p>
+            <p>Dua pilihan paket akun untuk fitur surat anonim. Surat Khusus ditinjau tim Qonsulin sebelum diarahkan ke Mentor/Konselor; ini bukan sesi konsultasi atau layanan darurat.</p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.5rem", marginTop: "2rem" }}>
@@ -142,7 +142,7 @@ function ServicesPage({ packages = [] }: { packages?: ConsultationPackage[] }) {
                     </div>
 
                     <ul style={{ listStyle: "none", padding: 0, margin: "1.25rem 0", display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-                      {pkg.features.map((feat, fIdx) => (
+                      {getMembershipBenefits(pkg).map((feat, fIdx) => (
                         <li key={fIdx} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", fontSize: "0.85rem", color: "var(--color-ink)", lineHeight: 1.45 }}>
                           <CheckCircle2 size={15} style={{ color: "var(--color-brand)", flexShrink: 0, marginTop: 2 }} />
                           <span>{feat}</span>
@@ -173,7 +173,7 @@ function ServicesPage({ packages = [] }: { packages?: ConsultationPackage[] }) {
 
       <section className="section service-start">
         <div className="container service-start-panel">
-          <div className="section-head center"><h2>Bagaimana Cara Memulai?</h2><p>Qonsulin MVP berfokus pada surat anonim, balasan komunitas, dan dukungan awal melalui surat.</p></div>
+          <div className="section-head center"><h2>Bagaimana Cara Memulai?</h2><p>Qonsulin MVP berfokus pada surat anonim, balasan komunitas, dan Surat Khusus untuk Mentor/Konselor.</p></div>
           <div className="service-start-grid">{letterSteps.map(([title, body]) => <article className="service-start-card" key={title}><CheckCircle2 size={16} /><h3>{title}</h3><p>{body}</p></article>)}</div>
           <div className="service-start-actions"><a className="btn btn-primary" href="/member/daftar">Mulai Menulis Surat<ArrowRight size={15} /></a></div>
         </div>

@@ -141,7 +141,7 @@ export default function ReplyLetterPage({ params }: { params: Promise<{ id: stri
   }
 
   if (thread.delivery_mode === "special") {
-    return <main className="site-shell"><Header active="/member" /><section className="section container" style={{ maxWidth: 540, margin: "3rem auto", textAlign: "center" }}><div className="card" style={{ padding: "2.5rem 1.5rem" }}><h2>Surat Privat Dikelola Admin</h2><p style={{ color: "var(--color-muted)", margin: "1rem 0 1.5rem" }}>Surat tujuan khusus tidak menerima balasan komunitas. Perbarui thread di Ruang Member untuk melihat balasan Tim Qonsulin.</p><Link href="/member" className="btn btn-primary">Ke Ruang Member</Link></div></section><Footer /></main>;
+    return <main className="site-shell"><Header active="/member" /><section className="section container" style={{ maxWidth: 540, margin: "3rem auto", textAlign: "center" }}><div className="card" style={{ padding: "2.5rem 1.5rem" }}><h2>Surat Khusus Dikelola Tim Qonsulin</h2><p style={{ color: "var(--color-muted)", margin: "1rem 0 1.5rem" }}>Surat khusus tidak menerima balasan komunitas. Perbarui status surat di Ruang Member untuk melihat proses penanganannya.</p><Link href="/member" className="btn btn-primary">Ke Ruang Member</Link></div></section><Footer /></main>;
   }
 
   const isPremiumUser = profile?.tier === "premium";

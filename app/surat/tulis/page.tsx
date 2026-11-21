@@ -82,8 +82,15 @@ export default function WriteLetterPage() {
       return;
     }
 
-    if (quota && !quota.can_send) {
-      setErrorMsg("Kuota surat batinmu bulan ini sudah mencapai batas (3/3). Tingkatkan ke Premium untuk menulis tanpa batas.");
+    const currentQuota = await getMemberQuota();
+    if (!currentQuota) {
+      setErrorMsg("Kuota membership belum dapat dimuat. Coba lagi sebelum mengirim surat.");
+      return;
+    }
+    setQuota(currentQuota);
+
+    if (!currentQuota.can_send) {
+      setErrorMsg(`Kuota surat publik bulan ini sudah habis (${currentQuota.used}/${currentQuota.limit}).`);
       return;
     }
 
@@ -167,7 +174,7 @@ export default function WriteLetterPage() {
             <div className="card" style={{ padding: "0.6rem 1rem", fontSize: "0.85rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
               <span>Sisa Kuota Bulan Ini:</span>
               <strong style={{ color: "var(--color-brand-strong)", fontWeight: 800 }}>
-                {isPremiumUser ? "Tanpa Batas (Premium)" : `${quota?.remaining ?? 3} / 3 Surat`}
+                {quota?.limit === -1 ? "Tanpa Batas" : quota ? `${quota.remaining} tersisa dari ${quota.limit}` : "Memuat..."}
               </strong>
             </div>
           </div>
@@ -323,7 +330,7 @@ export default function WriteLetterPage() {
             </Link>
             <button
               type="submit"
-              disabled={sending || (quota !== null && !quota.can_send)}
+              disabled={sending || !quota || !quota.can_send}
               className="btn btn-primary"
               style={{ display: "inline-flex", gap: "0.4rem", alignItems: "center" }}
             >

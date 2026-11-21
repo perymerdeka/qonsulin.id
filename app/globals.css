@@ -348,8 +348,11 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--font-display); color: var(--color
 .login-brand p { color: oklch(86% 0.016 260); }
 .login-panel { background: var(--color-slate-850); border: 1px solid oklch(43% 0.035 265 / .65); border-radius: var(--radius-xl); padding: var(--space-8); box-shadow: 0 30px 80px oklch(0% 0 0 / .3); }
 .field { display: grid; gap: .45rem; margin-bottom: var(--space-5); }
-.field label { font-size: .72rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 900; color: oklch(80% 0.02 260); }
-.field input, .field textarea, .field select { width: 100%; border: 1px solid oklch(43% 0.035 265); border-radius: var(--radius-md); padding: .78rem .9rem; background: var(--color-slate-800); color: white; }
+.field label { font-size: .72rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 900; color: var(--color-ink); }
+.field input, .field textarea, .field select { width: 100%; border: 1px solid #d1d5db; border-radius: var(--radius-md); padding: .78rem .9rem; background: #fff; color: #262626; color-scheme: light; }
+.field input::placeholder, .field textarea::placeholder { color: #6b7280; opacity: 1; }
+.login-panel .field label { color: oklch(80% 0.02 260); }
+.login-panel .field input, .login-panel .field textarea, .login-panel .field select { border-color: oklch(43% 0.035 265); background: var(--color-slate-800); color: white; color-scheme: dark; }
 .live { margin-top: var(--space-5); display: flex; justify-content: center; align-items: center; gap: .45rem; border-radius: var(--radius-md); padding: .55rem; font-size: .75rem; color: oklch(76% 0.16 155); background: oklch(25% 0.06 155 / .45); border: 1px solid oklch(42% 0.09 155 / .55); }
 .admin-shell { display: grid; grid-template-columns: 256px minmax(0, 1fr); min-height: 100vh; }
 .sidebar { background: white; border-right: 1px solid oklch(90% 0.01 260); display: flex; flex-direction: column; min-height: 0; position: sticky; top: 0; height: 100dvh; overflow: hidden; }
@@ -1417,7 +1420,9 @@ td { padding: 1rem; border-top: 1px solid oklch(92% 0.01 260); font-size: var(--
 .support-dispatch-card:first-child { border-top: 0; padding-top: 0; }
 .assigned-box { display: flex; align-items: flex-start; gap: .6rem; padding: .6rem .8rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: .6rem; margin: .3rem 0; }
 .dispatch-controls { display: grid; gap: .35rem; padding: .75rem; background: #fdfbf7; border: 1px dashed #d97706; border-radius: .6rem; margin: .4rem 0; }
-.dispatch-controls input, .dispatch-controls select { font-size: .82rem; padding: .35rem .6rem; border: 1px solid #d1d5db; border-radius: .4rem; background: white; }
+.dispatch-controls input, .dispatch-controls select, .dispatch-controls textarea { width: 100%; font-size: .82rem; padding: .55rem .7rem; border: 1px solid #d1d5db; border-radius: .4rem; background: white; color: #262626; color-scheme: light; }
+.dispatch-controls select option { background: white; color: #262626; }
+.dispatch-controls .field > span { color: #374151; font-weight: 700; }
 /* ==========================================================================
    Letterhead & Realistic Letter Paper Styles (Dashboard Member)
    ========================================================================== */
